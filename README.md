@@ -8,8 +8,6 @@
 
 ![Jack's github stats](https://my-github-stats-jack.vercel.app/api?username=jack0pan&theme=solarized-dark&show_icons=true)
 
-[![Top Langs](https://my-github-stats-jack.vercel.app/api/top-langs/?username=jack0pan)](https://github.com/jack0pan)
-
 ### My Repos
 
 ⭐️ Have a look at my **Repos** & do Leave a **Star** if you like my work.
