@@ -1,3 +1,10 @@
+---
+title: About
+permalink: /about
+layout: single
+author_profile: true
+---
+
 ## Jack Pan
 
 - 🔭 I’m currently working on Micro Frontends.
