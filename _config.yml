@@ -6,14 +6,14 @@ plugins:
   - jekyll-feed
   - jemoji
 
-remote_theme: "mmistakes/minimal-mistakes@4.24.0"
-minimal_mistakes_skin: "aqua"
-locale: "zh-CN"
+remote_theme: mmistakes/minimal-mistakes@4.24.0
+minimal_mistakes_skin: aqua
+locale: zh-CN
 title: Jack's blog
 name: Jack Pan
 description: ""
 baseurl: ""
-url: "https://www.jackpan.me"
+url: https://www.jackpan.me
 repository: "jack0pan/jack0pan"
 words_per_minute: 200
 comments:
