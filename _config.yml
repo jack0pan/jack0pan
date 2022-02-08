@@ -9,9 +9,9 @@ plugins:
 remote_theme: mmistakes/minimal-mistakes@4.24.0
 minimal_mistakes_skin: aqua
 locale: zh-CN
-title: Jack's blog
-name: Jack Pan
-description: ""
+title: 三番木四
+name: 潘杰
+description: 潘杰的个人网站，包含但不限于技术文章、学习笔记等。
 baseurl: ""
 url: https://www.jackpan.me
 repository: "jack0pan/jack0pan"
@@ -33,10 +33,19 @@ algolia:
 
 twitter:
   username: jack0pan
+facebook:
+  username: jack.pan.965
 
-author:
-  name: Jack Pan
-  bio: polyglot software engineer
+author: Jack
+
+footer:
+  links:
+    - label: Website
+      icon: "fas fa-fw fa-link"
+      url: https://www.jackpan.me
+    - label: GitHub
+      icon: "fab fa-fw fa-github"
+      url: https://github.com/jack0pan
 
 pageinate: 10
 
