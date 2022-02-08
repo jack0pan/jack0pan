@@ -1,20 +1,22 @@
 ---
 title: Design System 图标库：从原理到实践
-tags: ["Design System", "Icons"]
-category: frontend
+excerpt: 本文先介绍 Bootstrap Icons 的各种实现方式，然后再 GrowingIO Design Icons 的原理与实现。
+tags: ["Design System", "图标库"]
+category: 前端
 ---
 
-随着前端技术的发展，网页中的图标（Icon）已经不再局限于 `<img>` 标签，还有很多实现方式，比如：Sprites（俗称雪碧图）、Icon Font（字体图标）、SVG 等等。而一个被工程师所熟知的前端框架 Bootstrap，用这些技术实现了它的图标库。
+随着前端技术的发展，网页中的图标（Icon）已经不再局限于 `<img>`  标签，还有很多实现方式，比如：Sprites（俗称雪碧图）、Icon Font（字体图标）、SVG 等等。而一个被工程师所熟知的前端框架 Bootstrap，用这些技术实现了它的图标库。
 本文先介绍 Bootstrap Icons 的各种实现方式，然后再 GrowingIO Design Icons 的原理与实现。
 
 ## Bootstrap Icons
+
 ### `<img>`
 
 ![bootstap-logo.png](https://ik.imagekit.io/jnskuq5ualk/jack0pan/design-system-icons/bootstrap-logo_r6tTTtLjr.png?ik-sdk-version=javascript-1.4.3&updatedAt=1644306159334)
 通过 `<img>` 标签来展示图标是最原始、最简单的实现方式，实现上图的效果只需在 HTML 中插入如下代码：
 
 ```html
-<img src="/assets/img/bootstrap.svg" alt="Bootstrap" width="32" height="32">
+<img src="/assets/img/bootstrap.svg" alt="Bootstrap" width="32" height="32" />
 ```
 
 但是，这种方式也有一个缺点：在图片显示前需要等待一个 HTTP 会话的时间，当一个页面有若干个图标时，这个时间就的很长。
@@ -26,15 +28,16 @@ category: frontend
 ![bootstrap-sprites.png](https://ik.imagekit.io/jnskuq5ualk/jack0pan/design-system-icons/bootstrap-sprites_2JkQMUNAR0x.png?ik-sdk-version=javascript-1.4.3&updatedAt=1644306158996)
 
 实现代码如下：
+
 ```html
 <svg class="bi" width="32" height="32" fill="currentColor">
-  <use xlink:href="bootstrap-icons.svg#heart-fill"/>
+  <use xlink:href="bootstrap-icons.svg#heart-fill" />
 </svg>
 <svg class="bi" width="32" height="32" fill="currentColor">
-  <use xlink:href="bootstrap-icons.svg#toggles"/>
+  <use xlink:href="bootstrap-icons.svg#toggles" />
 </svg>
 <svg class="bi" width="32" height="32" fill="currentColor">
-  <use xlink:href="bootstrap-icons.svg#shop"/>
+  <use xlink:href="bootstrap-icons.svg#shop" />
 </svg>
 ```
 
@@ -42,14 +45,15 @@ category: frontend
 虽然通过 Sprites，把 HTTP 会话数量降低到一个，但是它的下载时机还是在第一次展示图标的时候，还是需要用户等在这个大文件的下载。
 
 ### Icon font
+
 CSS 中 @font-face 的出现，为解决上述问题提供了思路。
 @font-face CSS at-rule 指定一个用于显示文本的自定义字体，字体能从远程服务器或者用户本地安装的字体加载。使用方法如下：
 
 ```css
 @font-face {
   font-family: "bootstrap-icons";
-  src: url("./fonts/bootstrap-icons.woff2?a97b3594ad416896e15824f6787370e0") format("woff2"),
-url("./fonts/bootstrap-icons.woff?a97b3594ad416896e15824f6787370e0") format("woff");
+  src: url("./fonts/bootstrap-icons.woff2?a97b3594ad416896e15824f6787370e0") format("woff2"), url("./fonts/bootstrap-icons.woff?a97b3594ad416896e15824f6787370e0")
+      format("woff");
 }
 ```
 
@@ -65,7 +69,7 @@ HTML 代码如下：
 这样之后，可以用 <link> 来预先加载字体文件：
 
 ```html
-<link rel="preload" href="./fonts/bootstrap-icons.woff2?a97b3594ad416896e15824f6787370e0" as="font" type="font/woff2">
+<link rel="preload" href="./fonts/bootstrap-icons.woff2?a97b3594ad416896e15824f6787370e0" as="font" type="font/woff2" />
 ```
 
 Icon font 虽然可以使用预加载，但还是需要一次 HTTP 会话。有没有不需要额外 HTTP 会话的方式？
@@ -78,8 +82,18 @@ Icon font 虽然可以使用预加载，但还是需要一次 HTTP 会话。有�
 它的 SVG 代码为：
 
 ```html
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16">
-  <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="32"
+  height="32"
+  fill="currentColor"
+  class="bi bi-chevron-right"
+  viewBox="0 0 16 16"
+>
+  <path
+    fill-rule="evenodd"
+    d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"
+  />
 </svg>
 ```
 
@@ -87,7 +101,7 @@ Icon font 虽然可以使用预加载，但还是需要一次 HTTP 会话。有�
 
 ## GrowingIO Design Icons
 
-基于上文的技术对比，GrowingIO Design Icons 选用  SVG 实现方式。但需要和 GrowingIO Design 配合使用，而后者定位是 React 组件库，所以需要将 SVG 转换成 React 组件，这样做也带来一些好处：
+基于上文的技术对比，GrowingIO Design Icons 选用 SVG 实现方式。但需要和 GrowingIO Design 配合使用，而后者定位是 React 组件库，所以需要将 SVG 转换成 React 组件，这样做也带来一些好处：
 
 - 将 SVG 转换为 React 组件可减少一些多余的 SVG 样式。
 - 转换成 React 组件后，可以更容易的控制 SVG 的样式。
@@ -101,6 +115,7 @@ Icon font 虽然可以使用预加载，但还是需要一次 HTTP 会话。有�
 ![logo-black.svg](https://ik.imagekit.io/jnskuq5ualk/jack0pan/design-system-icons/gio-logo-black_n9XVGml24.svg?ik-sdk-version=javascript-1.4.3&updatedAt=1644307036726)
 
 得到代码如下：
+
 ```typescript
 import * as React from "react";
 
@@ -145,6 +160,7 @@ export default SvgComponent;
 - `src` 把 SVG 文件转成的 React 代码，并存放在 `src` 目录下。
 
 前端工程师得到 SVG 文件放 `svgs` 目录中，然后运行命令：
+
 ```bash
 $ npx @svgr/cli --out-dir src svgs
 ```
@@ -152,6 +168,7 @@ $ npx @svgr/cli --out-dir src svgs
 到这里，我们的大部分工作已经完成了。但在实际应用的时候，还会有自定义样式的需求。
 
 ### 自定义样式
+
 为了满足各种场景，需要对样式做一些修改。比如以下的场景：
 ![gio-design-icons.png](https://ik.imagekit.io/jnskuq5ualk/jack0pan/design-system-icons/gio-design-icons_Ft6jXXLwi.png?ik-sdk-version=javascript-1.4.3&updatedAt=1644306158562)
 
@@ -164,15 +181,15 @@ $ npx @svgr/cli --out-dir src svgs
 
 ```html
 <span class="gio-icon">
-  <svg viewBox="0 0 64 64" fill="currentColor" class="gio-icon-svg" width="1rem" height="1rem">
-    ...
-  </svg>
-<span>
+  <svg viewBox="0 0 64 64" fill="currentColor" class="gio-icon-svg" width="1rem" height="1rem">...</svg>
+  <span></span
+></span>
 ```
 
 然后通过 `gio-icon` 来定义 CSS 样式，实现 Hover、Click、Disable 等样式效果。
 
 ## 参考
+
 - [https://github.com/growingio/gio-design-icons](https://github.com/growingio/gio-design-icons)
 - [https://react-svgr.com/docs/getting-started/](https://react-svgr.com/docs/getting-started/)
 - [https://icons.getbootstrap.com/](https://icons.getbootstrap.com/)
