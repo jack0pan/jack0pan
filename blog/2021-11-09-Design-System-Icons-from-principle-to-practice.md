@@ -8,6 +8,8 @@ category: 前端
 随着前端技术的发展，网页中的图标（Icon）已经不再局限于 `<img>`  标签，还有很多实现方式，比如：Sprites（俗称雪碧图）、Icon Font（字体图标）、SVG 等等。而一个被工程师所熟知的前端框架 Bootstrap，用这些技术实现了它的图标库。
 本文先介绍 Bootstrap Icons 的各种实现方式，然后再 GrowingIO Design Icons 的原理与实现。
 
+<!--truncate-->
+
 ## Bootstrap Icons
 
 ### `<img>`
@@ -66,7 +68,7 @@ HTML 代码如下：
 <i class="bi-alarm" style="font-size: 2rem; color: cornflowerblue;"></i>
 ```
 
-这样之后，可以用 <link> 来预先加载字体文件：
+这样之后，可以用 `<link>` 来预先加载字体文件：
 
 ```html
 <link rel="preload" href="./fonts/bootstrap-icons.woff2?a97b3594ad416896e15824f6787370e0" as="font" type="font/woff2" />
