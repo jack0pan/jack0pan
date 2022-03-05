@@ -8,7 +8,7 @@ on:
 
 jobs:
   building:
-    name: Build website
+    name: Building
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -29,7 +29,18 @@ jobs:
       - name: Build website
         run: yarn run build
       - name: Archive website
+        run: tar --dereference --hard-dereference --directory build/ -cvf artifact.tar .
+      - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: github-pages
-          path: build
+          path: ./artifact.tar
+          if-no-files-found: warn
+  deploying:
+    name: Deploying
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy website
+        uses: actions/deploy-pages@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
