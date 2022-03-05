@@ -1,6 +1,7 @@
 ---
 title: Design System 图标库：从原理到实践
-excerpt: 本文先介绍 Bootstrap Icons 的各种实现方式，然后再 GrowingIO Design Icons 的原理与实现。
+description: 本文先介绍 Bootstrap Icons 的各种实现方式，然后再 GrowingIO Design Icons 的原理与实现。
+authors: jack
 tags: ["Design System", "图标库"]
 category: 前端
 ---
@@ -14,7 +15,7 @@ category: 前端
 
 ### `<img>`
 
-![bootstap-logo.png](https://ik.imagekit.io/jnskuq5ualk/jack0pan/design-system-icons/bootstrap-logo_r6tTTtLjr.png?ik-sdk-version=javascript-1.4.3&updatedAt=1644306159334)
+![bootstap-logo.jpeg](./bootstrap-logo.jpeg)
 通过 `<img>` 标签来展示图标是最原始、最简单的实现方式，实现上图的效果只需在 HTML 中插入如下代码：
 
 ```html
@@ -27,7 +28,7 @@ category: 前端
 
 为了解决上面提到的问题，雪碧图就应运而生。假设下图为页面上需要展示的三个图标：
 
-![bootstrap-sprites.png](https://ik.imagekit.io/jnskuq5ualk/jack0pan/design-system-icons/bootstrap-sprites_2JkQMUNAR0x.png?ik-sdk-version=javascript-1.4.3&updatedAt=1644306158996)
+![bootstrap-sprites.jpeg](./bootstrap-sprites.jpeg)
 
 实现代码如下：
 
@@ -60,7 +61,7 @@ CSS 中 @font-face 的出现，为解决上述问题提供了思路。
 ```
 
 展示如下图标：
-![bootstrap-icon-font.png](https://ik.imagekit.io/jnskuq5ualk/jack0pan/design-system-icons/bootstrap-icon-font_25o1hoLpT.png?ik-sdk-version=javascript-1.4.3&updatedAt=1644306158467)
+![bootstrap-icon-font.jpeg](./bootstrap-icon-font.jpeg)
 
 HTML 代码如下：
 
@@ -79,7 +80,7 @@ Icon font 虽然可以使用预加载，但还是需要一次 HTTP 会话。有�
 ### SVG
 
 这时候就不得不提 SVG 了，因为可以用 `<svg>` 标签把 SVG 的定义嵌入到 HTML 代码中。比如下面的图标：
-![bootstrap-svg.png](https://ik.imagekit.io/jnskuq5ualk/jack0pan/design-system-icons/bootstrap-svg_QCSpQw781.png?ik-sdk-version=javascript-1.4.3&updatedAt=1644306590857)
+![bootstrap-svg.jpeg](./bootstrap-svg.jpeg)
 
 它的 SVG 代码为：
 
@@ -114,7 +115,7 @@ Icon font 虽然可以使用预加载，但还是需要一次 HTTP 会话。有�
 实现方式确定了，接下来的问题就是：前端工程师从设计师那里拿到 SVG 文件后，如何自动的转换成 React 组件？
 这里要引入一个新的工具—— SVGR。用它来转换一下 GrowingIO 的 Logo 文件：
 
-![logo-black.svg](https://ik.imagekit.io/jnskuq5ualk/jack0pan/design-system-icons/gio-logo-black_n9XVGml24.svg?ik-sdk-version=javascript-1.4.3&updatedAt=1644307036726)
+![logo-black.svg](./gio-logo-black.svg)
 
 得到代码如下：
 
@@ -172,7 +173,7 @@ $ npx @svgr/cli --out-dir src svgs
 ### 自定义样式
 
 为了满足各种场景，需要对样式做一些修改。比如以下的场景：
-![gio-design-icons.png](https://ik.imagekit.io/jnskuq5ualk/jack0pan/design-system-icons/gio-design-icons_Ft6jXXLwi.png?ik-sdk-version=javascript-1.4.3&updatedAt=1644306158562)
+![gio-design-icons.jpeg](./gio-design-icons.jpeg)
 
 - 图标需要有背景，不状态下背景颜色不同；
 - 图标的颜色可自定义；
