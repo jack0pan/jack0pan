@@ -38,6 +38,8 @@ jobs:
           if-no-files-found: warn
   deploying:
     name: Deploying
+    needs:
+      - building
     runs-on: ubuntu-latest
     steps:
       - name: Deploy website
