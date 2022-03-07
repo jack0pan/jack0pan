@@ -106,6 +106,22 @@ const config = {
         darkTheme: darkCodeTheme,
       },
     }),
+  i18n: {
+    defaultLocale: "zh-CN",
+    locales: ["en", "zh-CN"],
+    localeConfigs: {
+      en: {
+        label: "English",
+        direction: "ltr",
+        htmlLang: "en-US",
+      },
+      "zh-CN": {
+        label: "简体中文",
+        direction: "ltr",
+        htmlLang: "zh-CN",
+      },
+    },
+  },
 };
 
 module.exports = config;

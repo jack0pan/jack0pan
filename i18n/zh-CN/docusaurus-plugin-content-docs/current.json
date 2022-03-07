@@ -1,0 +1,14 @@
+{
+  "version.label": {
+    "message": "下一篇",
+    "description": "The label for version current"
+  },
+  "sidebar.tutorialSidebar.category.前端": {
+    "message": "前端",
+    "description": "The label for category 前端 in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Design System": {
+    "message": "Design System",
+    "description": "The label for category Design System in sidebar tutorialSidebar"
+  }
+}
