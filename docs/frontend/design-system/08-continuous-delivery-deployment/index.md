@@ -53,7 +53,7 @@ GitHub 上对已发布 PR 的 comment
 
 </center>
 
-semantic-release 详细使用见：[semantic-release 使用教程](../66771464?view=doc_embed)
+semantic-release 详细使用见：[semantic-release 使用教程](/blog/2021/12/08/semantic-release-usage)
 
 详细配置如下：[.github/workflows/cd.yml](https://github.com/jack0pan/md-components-react/blob/bda086f50b39df4877f8eab55a9d2da43cc843db/.github/workflows/cd.yml)
 

@@ -74,9 +74,9 @@ module.exports = {
 
 对于 Prettier、Stylelint 和 ESLint 的配置，参考：
 
-- [Prettier 使用教程](./prettier-usage)
-- [Stylelint 使用教程](./stylelint-usage)
-- [ESLint 使用教程](./eslint-usage)
+- [Prettier 使用教程](/blog/2020/11/03/prettier-usage)
+- [Stylelint 使用教程](/blog/2020/11/04/stylelint-usage)
+- [ESLint 使用教程](/blog/2020/11/05/eslint-usage)
 
 ### 与 husky 集成
 
