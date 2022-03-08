@@ -3,9 +3,9 @@
     "message": "三番木四",
     "description": "The title in the navbar"
   },
-  "item.label.Tutorial": {
-    "message": "Tutorial",
-    "description": "Navbar item with label Tutorial"
+  "item.label.Engineering": {
+    "message": "工程实践",
+    "description": "Navbar item with label Engineering"
   },
   "item.label.Blog": {
     "message": "博客",
