@@ -124,54 +124,63 @@ const config = {
   },
   plugins: [
     [
-      '@docusaurus/plugin-pwa',
+      "@docusaurus/plugin-ideal-image",
+      {
+        quality: 85,
+        max: 1030,
+        min: 640,
+        steps: 2,
+      },
+    ],
+    [
+      "@docusaurus/plugin-pwa",
       {
         pwaHead: [
           {
-            tagName: 'link',
-            rel: 'apple-touch-icon',
-            href: '/apple-touch-icon.png',
-            sizes: '180x180',
+            tagName: "link",
+            rel: "apple-touch-icon",
+            href: "/apple-touch-icon.png",
+            sizes: "180x180",
           },
           {
-            tagName: 'link',
-            rel: 'icon',
-            href: '/favicon-32x32.png',
-            sizes: '32x32',
-            type: 'image/png',
+            tagName: "link",
+            rel: "icon",
+            href: "/favicon-32x32.png",
+            sizes: "32x32",
+            type: "image/png",
           },
           {
-            tagName: 'link',
-            rel: 'icon',
-            href: '/favicon-16x16.png',
-            sizes: '16x16',
-            type: 'image/png',
+            tagName: "link",
+            rel: "icon",
+            href: "/favicon-16x16.png",
+            sizes: "16x16",
+            type: "image/png",
           },
           {
-            tagName: 'link',
-            rel: 'manifest',
-            href: '/site.webmanifest',
+            tagName: "link",
+            rel: "manifest",
+            href: "/site.webmanifest",
           },
           {
-            tagName: 'link',
-            rel: 'mask-icon',
-            href: '/safari-pinned-tab.svg',
-            color: '#5bbad5',
+            tagName: "link",
+            rel: "mask-icon",
+            href: "/safari-pinned-tab.svg",
+            color: "#5bbad5",
           },
           {
-            tagName: 'meta',
-            name: 'msapplication-TileColor',
-            content: '#2d89ef',
+            tagName: "meta",
+            name: "msapplication-TileColor",
+            content: "#2d89ef",
           },
           {
-            tagName: 'meta',
-            name: 'theme-color',
-            content: '#ffffff',
-          }
-        ]
-      }
-    ]
-  ]
+            tagName: "meta",
+            name: "theme-color",
+            content: "#ffffff",
+          },
+        ],
+      },
+    ],
+  ],
 };
 
 module.exports = config;
