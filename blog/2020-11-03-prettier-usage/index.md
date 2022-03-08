@@ -1,9 +1,9 @@
 ---
 title: Prettier 使用教程
-excerpt: Prettier 是一个代码格式工具，支持大部分常用的编程语言，本文介绍如何使用 Prettier。
-tag: 开发工具
+descirption: Prettier 是一个代码格式工具，支持大部分常用的编程语言，本文介绍如何使用 Prettier。
+authors: jack
+tags: ["开发工具"]
 category: 前端
-last_modified_at: 2022-02-08
 ---
 
 ## Prettier 是什么
@@ -15,6 +15,8 @@ Prettier 是一个“有态度”的代码格式化工具，它支持：
 - CSS：Less、SCSS、styled-components、styled-jsx
 - Markdown：CommonMark、GitHub-Flavored Markdown、MDX
 - 其他：GraphQL、YAML
+
+<!--truncate-->
 
 对于其他语言也有社区的支持，比如：
 

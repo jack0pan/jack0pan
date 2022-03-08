@@ -1,11 +1,13 @@
 ---
 title: Stylelint 使用教程
-tag: 开发工具
+authors: jack
+tags: ["开发工具"]
 category: 前端
-last_modified_at: 2022-02-09
 ---
 
 Stylelint 是一个强大的、现代的 linter，可以帮助你在编写样式过程中避免错误和强制执行约定。
+
+<!-- truncate -->
 
 ## 特性
 

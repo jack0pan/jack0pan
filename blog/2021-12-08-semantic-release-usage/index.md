@@ -2,28 +2,29 @@
 title: semantic-release 使用教程
 description: semantic-release 是一个全自动的版本管理和包发布工具。
 authors: jack
-tags: ["semantic-release", "图标库"]
+tags: ["semantic-release"]
 category: 前端
 ---
 
 semantic-release 是一个全自动的版本管理和包发布工具。
 
+<!--truncate-->
+
 ## 工作原理
 
 semantic-release 会分析 commint message，来决定对用户的实际影响。根据语义化版本来自动生成下一个版本号，并生成变更日志和发布。
-默认情况下，semantic-release 要 commit message 遵从 [Angular Commit Message Conventions](https://github.com/angular/angular/blob/master/CONTRIBUTING.md#-commit-message-format)。然后通过[@semantic-release/commit-analyzer](https://github.com/semantic-release/commit-analyzer#options) 和 [@semantic-release/release-notes-generator](https://github.com/semantic-release/release-notes-generator#options) 两个插件来分析 commit message。
+默认情况下，semantic-release 要 commit message 遵从 [Angular Commit Message Conventions](https://github.com/angular/angular/blob/master/CONTRIBUTING.md#-commit-message-format)。然后通过 [@semantic-release/commit-analyzer](https://github.com/semantic-release/commit-analyzer#options) 和 [@semantic-release/release-notes-generator](https://github.com/semantic-release/release-notes-generator#options) 两个插件来分析 commit message。
+
 下面给出几个示例：
 
 | Commit message | Release type |
-| --- | --- |
+| ----- | ----- |
 | fix(pencil): stop graphite breaking when too much pressure applied | ~~Patch~~ Fix Release |
 | feat(pencil): add 'graphiteWidth' option | ~~Minor~~ Feature Release |
-| perf(pencil): remove graphiteWidth option
-​
-
-BREAKING CHANGE: The graphiteWidth option has been removed.The default graphite width of 10mm is always used for performance reasons. | ~~Major~~ Breaking Release (Note that the BREAKING CHANGE: token must be in the footer of the commit) |
+| perf(pencil): remove graphiteWidth option<br/><br/>BREAKING CHANGE: The graphiteWidth option has been removed.The default graphite width of 10mm is always used for performance reasons. | ~~Major~~ Breaking Release (Note that the BREAKING CHANGE: token must be in the footer of the commit) |
 
 ## 快速开始
+
 按照以下步骤来操作：
 
 1. 在项目中安装 semantic-release
@@ -31,9 +32,8 @@ BREAKING CHANGE: The graphiteWidth option has been removed.The default graphite 
 1. 在 CI 服务中配置 Git 仓库和包管理仓库的认证权限
 1. 配置 semantic-release 的选项和插件
 
-​
-
 另一种方式是通过交互式命令行：
+
 ```bash
 $ npx semantic-release-cli setup
 Need to install the following packages:
@@ -45,32 +45,37 @@ Ok to proceed? (y) y
 ? Provide a GitHub Personal Access Token (create a token at https://github.com/settings/tokens/n
 ew?scopes=repo) xxx
 ? What CI are you using? Github Actions
-
 ```
+
 ## 配置
+
 ### 配置文件
+
 配置文件支持三种方式：
 
-1. 名为`.releaserc`的文件，后缀可以为`.yaml`、 `.yml`、 `.json`和 `.js`
-1. 名为`release.config.js`文件，并且要 export 出对象
-1. 在`package.json`文件中有`release`关键字
+1. 名为 `.releaserc` 的文件，后缀可以为 `.yaml`、 `.yml`、 `.json` 和 `.js`
+1. 名为 `release.config.js`文 件，并且要 export 出对象
+1. 在 `package.json` 文件中有 `release` 关键字
 
 各种配置项见：[https://semantic-release.gitbook.io/semantic-release/usage/configuration#options](https://semantic-release.gitbook.io/semantic-release/usage/configuration#options)
 ​
 
 ### CI 配置
+
 以 GitHub Actions 为例，访问远程仓库和 npm 用到的环境变量：
 
-- `GH_TOKEN`或`GITHUB_TOKEN`：GitHub 的 [personal access token](https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line)
+- `GH_TOKEN` 或 `GITHUB_TOKEN`：GitHub 的 [personal access token](https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line)
 - `NPM_TOKEN`：npm token created via [npm token create](https://docs.npmjs.com/getting-started/working_with_tokens#how-to-create-new-tokens). **Note**: Only the auth-only [level of npm two-factor authentication](https://docs.npmjs.com/getting-started/using-two-factor-authentication#levels-of-authentication) is supported
 
 ​
 
 ## 详细流程
-![](https://cdn.nlark.com/yuque/__mermaid_v3/b92a5e376df5da2b479c8087b56d6d52.svg#lake_card_v2=eyJ0eXBlIjoibWVybWFpZCIsImNvZGUiOiIlJXtpbml0OiB7J3RoZW1lJzogJ2ZvcmVzdCd9fSUlXG5cbmZsb3djaGFydCBMUlxuICBzdWJncmFwaCBTdGFnZTFcbiAgICBWQyhWZXJpZnkgY29uZGl0aW9ucykgLS0-IEdMUihHZXQgbGFzdCByZWxlYXNlKSAtLT4gQUMoQW5hbHl6ZSBjb21taXRzKTtcblx0ZW5kXG5cdHN1YmdyYXBoIFN0YWdlMlxuICAgIFZSKFZlcmlmeSByZWxlYXNlKSAtLT4gR04oR2VuZXJhdGUgbm90ZXMpIC0tPiBDR1QoQ3JlYXRlIEdpdCB0YWcpO1xuXHRlbmRcblx0c3ViZ3JhcGggU3RhZ2UzXG5cdFx0UDEoUHJlcGFyZSkgLS0-IFAyKFB1Ymxpc2gpIC0tPiBOKE5vdGlmeSk7XG5cdGVuZFxuXHRTdGFnZTEgLS0-IFN0YWdlMiAtLT4gU3RhZ2UzOyIsInVybCI6Imh0dHBzOi8vY2RuLm5sYXJrLmNvbS95dXF1ZS9fX21lcm1haWRfdjMvYjkyYTVlMzc2ZGY1ZGEyYjQ3OWM4MDg3YjU2ZDZkNTIuc3ZnIiwiaWQiOiJmaXlFMSIsIm1hcmdpbiI6eyJ0b3AiOnRydWUsImJvdHRvbSI6dHJ1ZX0sImNhcmQiOiJkaWFncmFtIn0=) 
+
+![详细流程](./full-flow.svg)
 
 整个流程如上图所示，这里给出一个示例配置来完成整个流程：
-```json
+
+```json title='.releaserc.json'
 {
   "plugins": [
     "@semantic-release/commit-analyzer",
@@ -95,17 +100,21 @@ ew?scopes=repo) xxx
   ]
 }
 ```
+
 ## 可扩展的配置包
+
 不想自己配置，可以直接使用 [semantic-release-npm-config](https://github.com/jack0pan/semantic-release-npm-config)。
 假如，在 GitHub 上开发了一个 package，现在要发布到 npm，并在 GitHub 上创建 release，过程如下：
 
 1. 安装依赖：
+
 ```bash
 yarn add -D semantic-release semantic-release-npm-config @semantic-release/github
 ```
 
 2. 创建配置文件：
-```javascript
+
+```javascript title='release.config.js'
 const { plugins } = require('semantic-release-npm-config');
 
 module.exports = {
@@ -114,6 +123,7 @@ module.exports = {
 ```
 
 3. 执行结果：
+
 ```bash
 $ npx semantic-release
 [12:53:32 PM] [semantic-release] › ℹ  Running semantic-release version 19.0.2

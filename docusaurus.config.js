@@ -23,11 +23,11 @@ const config = {
       ({
         docs: {
           sidebarPath: require.resolve("./sidebars.js"),
-          editUrl: "https://github.com/jack0pan/jack0pan/tree/main/docs/",
+          editUrl: "https://github.com/jack0pan/jack0pan/tree/main/",
         },
         blog: {
           showReadingTime: true,
-          editUrl: "https://github.com/jack0pan/jack0pan/tree/main/blog/",
+          editUrl: "https://github.com/jack0pan/jack0pan/tree/main/",
         },
         theme: {
           customCss: require.resolve("./src/css/custom.css"),

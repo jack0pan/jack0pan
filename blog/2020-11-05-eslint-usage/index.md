@@ -1,11 +1,13 @@
 ---
 title: ESLint 使用教程
-tag: 开发工具
+authors: jack
+tags: ["开发工具"]
 category: 前端
-last_modified_at: 2022-02-09
 ---
 
 ESLint——在你的 JavaScript 代码中查找并解决问题。
+
+<!--truncate-->
 
 ## 特性
 
@@ -23,13 +25,13 @@ ESLint 是在 ECMAScript/JavaScript 代码中识别和报告模式匹配的工�
 安装到项目：
 
 ```bash
-$ yarn add -D eslint
+yarn add -D eslint
 ```
 
 然后创建配置文件，可以使用命令：
 
 ```bash
-$ yarn create @eslint/config
+yarn create @eslint/config
 ```
 
 ### 配置
@@ -38,7 +40,7 @@ $ yarn create @eslint/config
 
 对于 eslint 的 config，可以用预置的，比如下面的例子是用 Airbnb 的配置：
 
-```
+```plain
 success Installed "@eslint/create-config@0.1.2" with binaries:
       - create-config
 ✔ How would you like to use ESLint? · style
@@ -63,7 +65,7 @@ Successfully created .eslintrc.js file
 
 如果以上的都不使用，可以根据提示完全自定义：
 
-```
+```plain
 ✔ How would you like to use ESLint? · style
 ✔ What type of modules does your project use? · esm
 ✔ Which framework does your project use? · react
@@ -90,7 +92,7 @@ Successfully created .eslintrc.js file in /Users/Jack/Projects/Frontend/design-s
 首先，安装：
 
 ```bash
-$ yarn add -D eslint-config-react-app
+yarn add -D eslint-config-react-app
 ```
 
 然后修改`.eslintrc.js`文件：
@@ -108,7 +110,7 @@ module.exports = {
 安装 eslint-config-prettier：
 
 ```bash
-$ yarn add -D eslint-config-prettier
+yarn add -D eslint-config-prettier
 ```
 
 修改配置文件，在 `extends`数组中增加`"prettier"`，比如：
