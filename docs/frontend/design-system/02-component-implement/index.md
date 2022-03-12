@@ -73,18 +73,21 @@ Button.defaultProps = {
 export default Button;
 ```
 
-1. Ref 转发
-   Ref 转发是一项将 ref 自动地通过组件传递到其一子组件的技巧。对于大多数应用中的组件来说，这通常不是必需的。但其对某些组件，尤其是可重用的组件库是很有用的。
+#### Ref 转发
+
+Ref 转发是一项将 ref 自动地通过组件传递到其一子组件的技巧。对于大多数应用中的组件来说，这通常不是必需的。但其对某些组件，尤其是可重用的组件库是很有用的。
 
 `Button` 使用 `React.forwardRef` 来获取传递给它的 `ref`，然后转发到它渲染的 `DOM button`。
 
-2. displayName
-   `displayName` 字符串多用于调试消息。通常，你不需要设置它，因为它可以根据函数组件或 `class` 组件的名称推断出来。
+#### displayName
+
+`displayName` 字符串多用于调试消息。通常，你不需要设置它，因为它可以根据函数组件或 `class` 组件的名称推断出来。
 
 因为我们使用了 `forwardRef`，这里手动设置一下。
 
-3. defaultProps
-   `defaultProps` 可以为组件添加默认 `props`。这一般用于 `props` 未赋值，但又不能为 null 的情况。
+#### defaultProps
+
+`defaultProps` 可以为组件添加默认 `props`。这一般用于 `props` 未赋值，但又不能为 null 的情况。
 
 ### `Props` 规范
 
