@@ -7,10 +7,11 @@ category: 前端
 ## 之前
 
 之前写了关于前端搭建 Design System 的文章，如下：
-[GrowingIO Design 组件库搭建之开发工具](https://mp.weixin.qq.com/s/rdgj9ZI-gGfDWj-bCNtHng)
-[GrowingIO Design 组件库搭建之单元测试](https://mp.weixin.qq.com/s/BPLgYsZ9B94P0vuH65N0Mw)
-[GrowingIO Design 组件库搭建之组件开发](https://mp.weixin.qq.com/s/Eyik5KsiPzSv4n9DG3RGOA)
-[GrowingIO Design 组件库搭建之 CI/CD](https://mp.weixin.qq.com/s/93rzYcY17MmenDsTwEZXiA)
+
+- [GrowingIO Design 组件库搭建之开发工具](https://mp.weixin.qq.com/s/rdgj9ZI-gGfDWj-bCNtHng)
+- [GrowingIO Design 组件库搭建之单元测试](https://mp.weixin.qq.com/s/BPLgYsZ9B94P0vuH65N0Mw)
+- [GrowingIO Design 组件库搭建之组件开发](https://mp.weixin.qq.com/s/Eyik5KsiPzSv4n9DG3RGOA)
+- [GrowingIO Design 组件库搭建之 CI/CD](https://mp.weixin.qq.com/s/93rzYcY17MmenDsTwEZXiA)
 
 ## 现在
 
