@@ -105,6 +105,13 @@ const config = {
         theme: lightCodeTheme,
         darkTheme: darkCodeTheme,
       },
+      algolia: {
+        appId: "PZ6QUF32M9",
+        apiKey: "93855d0b9112dd62626009530db355c5",
+        indexName: "jackpan",
+        contextualSearch: true,
+        searchPagePath: "search",
+      },
     }),
   i18n: {
     defaultLocale: "zh-CN",
