@@ -1636,12 +1636,12 @@
     chalk "^4.1.2"
     tslib "^2.4.0"
 
-"@docusaurus/lqip-loader@2.0.1":
-  version "2.0.1"
-  resolved "https://registry.yarnpkg.com/@docusaurus/lqip-loader/-/lqip-loader-2.0.1.tgz#805a3b02cb33cf394ca4e814b23518fab607a625"
-  integrity sha512-Rt7xuV8s604lxxDiXCYUJb8/7ML+35yGOW7zb5fUplVpGEIVwSBAY9wgwBtfvVw7IXm49nAt92PDpv690VQ8+A==
+"@docusaurus/lqip-loader@2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@docusaurus/lqip-loader/-/lqip-loader-2.1.0.tgz#0cde274b59caf8451b5963c92bfa2ea127a4b552"
+  integrity sha512-4I8Lq+SjF+GvvPGpPh4o8hW66fIoIaY3qUmSRT9anyF9Fa1007JcMqU4LbbDN8/yC6ps3Mfvji46K5WLfQBGgg==
   dependencies:
-    "@docusaurus/logger" "2.0.1"
+    "@docusaurus/logger" "2.1.0"
     file-loader "^6.2.0"
     lodash "^4.17.21"
     sharp "^0.30.7"
@@ -1869,17 +1869,17 @@
     "@docusaurus/utils-validation" "2.0.1"
     tslib "^2.4.0"
 
-"@docusaurus/plugin-ideal-image@^2.0.1":
-  version "2.0.1"
-  resolved "https://registry.yarnpkg.com/@docusaurus/plugin-ideal-image/-/plugin-ideal-image-2.0.1.tgz#e943cd53bd5edb28c014a200d37cdfa76f6f3ae6"
-  integrity sha512-SD8kf9VCa3qIYTU3Cdv4Yeqootb73Klzzejr6nWd5t01bNRKSw9b7jOOSh54eDxH47uYqD1Ycok8WkookmMexg==
+"@docusaurus/plugin-ideal-image@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@docusaurus/plugin-ideal-image/-/plugin-ideal-image-2.1.0.tgz#a734a88bfcb1a271fc28484b9c6e89d8ed1a426a"
+  integrity sha512-Yzi4Yg11U5M38FaKkvYsmYl/9ZkdDoI3f69K+CAWEH/S81DdZ3V/SVfjXHkVVlihRejlquuHYJ64P0Sc8GDtjA==
   dependencies:
-    "@docusaurus/core" "2.0.1"
-    "@docusaurus/lqip-loader" "2.0.1"
+    "@docusaurus/core" "2.1.0"
+    "@docusaurus/lqip-loader" "2.1.0"
     "@docusaurus/responsive-loader" "^1.7.0"
-    "@docusaurus/theme-translations" "2.0.1"
-    "@docusaurus/types" "2.0.1"
-    "@docusaurus/utils-validation" "2.0.1"
+    "@docusaurus/theme-translations" "2.1.0"
+    "@docusaurus/types" "2.1.0"
+    "@docusaurus/utils-validation" "2.1.0"
     "@endiliey/react-ideal-image" "^0.0.11"
     react-waypoint "^10.3.0"
     sharp "^0.30.7"
