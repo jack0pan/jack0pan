@@ -1523,7 +1523,7 @@
     webpack-merge "^5.8.0"
     webpackbar "^5.0.2"
 
-"@docusaurus/core@^2.2.0":
+"@docusaurus/core@2.2.0", "@docusaurus/core@^2.2.0":
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/@docusaurus/core/-/core-2.2.0.tgz#64c9ee31502c23b93c869f8188f73afaf5fd4867"
   integrity sha512-Vd6XOluKQqzG12fEs9prJgDtyn6DPok9vmUWDR2E6/nV5Fl9SVkhEQOBxwObjk3kQh7OY7vguFaLh0jqdApWsA==
@@ -1636,12 +1636,12 @@
     chalk "^4.1.2"
     tslib "^2.4.0"
 
-"@docusaurus/lqip-loader@2.1.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@docusaurus/lqip-loader/-/lqip-loader-2.1.0.tgz#0cde274b59caf8451b5963c92bfa2ea127a4b552"
-  integrity sha512-4I8Lq+SjF+GvvPGpPh4o8hW66fIoIaY3qUmSRT9anyF9Fa1007JcMqU4LbbDN8/yC6ps3Mfvji46K5WLfQBGgg==
+"@docusaurus/lqip-loader@2.2.0":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@docusaurus/lqip-loader/-/lqip-loader-2.2.0.tgz#46ccf0da970cd7817c885e09ff14d8bccd64d434"
+  integrity sha512-nER3YokwkkNA1c2bAQzyqH8nfdbzkNtgwbuWvwnNuxW6kyhMopLcIy9qQYpSzcA0S7xcfj7+ysdB/DX7+nWoMw==
   dependencies:
-    "@docusaurus/logger" "2.1.0"
+    "@docusaurus/logger" "2.2.0"
     file-loader "^6.2.0"
     lodash "^4.17.21"
     sharp "^0.30.7"
@@ -1797,17 +1797,17 @@
     "@docusaurus/utils-validation" "2.1.0"
     tslib "^2.4.0"
 
-"@docusaurus/plugin-ideal-image@^2.1.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@docusaurus/plugin-ideal-image/-/plugin-ideal-image-2.1.0.tgz#a734a88bfcb1a271fc28484b9c6e89d8ed1a426a"
-  integrity sha512-Yzi4Yg11U5M38FaKkvYsmYl/9ZkdDoI3f69K+CAWEH/S81DdZ3V/SVfjXHkVVlihRejlquuHYJ64P0Sc8GDtjA==
+"@docusaurus/plugin-ideal-image@^2.2.0":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@docusaurus/plugin-ideal-image/-/plugin-ideal-image-2.2.0.tgz#bd2fc4d8f8c4a4526b288297d892cb76e61e1382"
+  integrity sha512-1tnyPotxLEglt497nmccxWOpAA6ulMf4nc2k8tReEljmwHebefWV9wbK1RK/44Na8GiGb709/Zs+HHdNRied8w==
   dependencies:
-    "@docusaurus/core" "2.1.0"
-    "@docusaurus/lqip-loader" "2.1.0"
+    "@docusaurus/core" "2.2.0"
+    "@docusaurus/lqip-loader" "2.2.0"
     "@docusaurus/responsive-loader" "^1.7.0"
-    "@docusaurus/theme-translations" "2.1.0"
-    "@docusaurus/types" "2.1.0"
-    "@docusaurus/utils-validation" "2.1.0"
+    "@docusaurus/theme-translations" "2.2.0"
+    "@docusaurus/types" "2.2.0"
+    "@docusaurus/utils-validation" "2.2.0"
     "@endiliey/react-ideal-image" "^0.0.11"
     react-waypoint "^10.3.0"
     sharp "^0.30.7"
@@ -1967,10 +1967,32 @@
     fs-extra "^10.1.0"
     tslib "^2.4.0"
 
+"@docusaurus/theme-translations@2.2.0":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@docusaurus/theme-translations/-/theme-translations-2.2.0.tgz#5fbd4693679806f80c26eeae1381e1f2c23d83e7"
+  integrity sha512-3T140AG11OjJrtKlY4pMZ5BzbGRDjNs2co5hJ6uYJG1bVWlhcaFGqkaZ5lCgKflaNHD7UHBHU9Ec5f69jTdd6w==
+  dependencies:
+    fs-extra "^10.1.0"
+    tslib "^2.4.0"
+
 "@docusaurus/types@2.1.0":
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/@docusaurus/types/-/types-2.1.0.tgz#01e13cd9adb268fffe87b49eb90302d5dc3edd6b"
   integrity sha512-BS1ebpJZnGG6esKqsjtEC9U9qSaPylPwlO7cQ1GaIE7J/kMZI3FITnNn0otXXu7c7ZTqhb6+8dOrG6fZn6fqzQ==
+  dependencies:
+    "@types/history" "^4.7.11"
+    "@types/react" "*"
+    commander "^5.1.0"
+    joi "^17.6.0"
+    react-helmet-async "^1.3.0"
+    utility-types "^3.10.0"
+    webpack "^5.73.0"
+    webpack-merge "^5.8.0"
+
+"@docusaurus/types@2.2.0":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@docusaurus/types/-/types-2.2.0.tgz#02c577a4041ab7d058a3c214ccb13647e21a9857"
+  integrity sha512-b6xxyoexfbRNRI8gjblzVOnLr4peCJhGbYGPpJ3LFqpi5nsFfoK4mmDLvWdeah0B7gmJeXabN7nQkFoqeSdmOw==
   dependencies:
     "@types/history" "^4.7.11"
     "@types/react" "*"
