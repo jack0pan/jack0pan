@@ -1,5 +1,8 @@
 name: Deno Deploy
-on: [push]
+on:
+  push:
+    branches:
+      - main
 
 jobs:
   deploy:
@@ -34,6 +37,6 @@ jobs:
       - name: Upload to Deno Deploy
         uses: denoland/deployctl@v1
         with:
-          project: "jack0pan-jack0pan"
+          project: "jackpan"
           entrypoint: "./main.ts"
           root: build
