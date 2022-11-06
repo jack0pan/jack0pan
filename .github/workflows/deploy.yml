@@ -28,6 +28,8 @@ jobs:
         run: yarn install
       - name: Build
         run: yarn build
+      - name: Copy main.ts
+        run: cp main.ts build
 
       - name: Upload to Deno Deploy
         uses: denoland/deployctl@v1
