@@ -1,0 +1,57 @@
+---
+title: "CIT CTF 2026 · Baby Exponent: the most textbook RSA e=3"
+description: Public exponent e=3, plaintext small enough that m³ never overflowed the modulus. Integer cube root and done.
+pubDate: 2026-05-07
+tags: [CTF, cit-ctf-2026, crypto, rsa]
+series: CIT CTF 2026
+---
+
+The challenge prints three numbers:
+
+```
+n = 39753111046581583678049531864...  (768-bit)
+e = 3
+c = 21208016443347524194488872231...  (much shorter)
+```
+
+`e=3` should be a reflex trigger: either Håstad (same plaintext, multiple moduli) or **the plaintext is small enough that it never overflows the modulus**. This is the second.
+
+## Approach
+
+RSA encrypts as `c = m^e mod n`. When `m^e < n`, the `mod n` step is a no-op and `c = m^e` is an integer equation. Recover `m` by taking the integer `e`-th root of `c`. The plaintext bytes fall out.
+
+`n` is 768 bit; `c` is barely 268 bit. Clearly `c << n`. The plaintext lands somewhere around 26–27 bytes — exactly the right size for a flag wrapped in `CIT{...}`. Cube-root straight away.
+
+## Solver
+
+```python
+from gmpy2 import iroot
+
+n = 39753111046581583678049531864...
+e = 3
+c = 21208016443347524194488872231...
+
+m, exact = iroot(c, 3)
+print("exact:", exact)
+print("m:", m)
+if exact:
+    mi = int(m)
+    b = mi.to_bytes((mi.bit_length() + 7) // 8, "big")
+    print("bytes:", b)
+```
+
+`gmpy2.iroot(c, 3)` returns `(root, is_exact_root)`. Here `exact=True`, confirming `m³ == c` exactly — no overflow.
+
+```
+exact: True
+m: 27680038115913774460198308299617031311839022658531567335298462333
+bytes: b'CIT{sm4ll_3xp0n3nt_g0_brrr}'
+```
+
+`CIT{sm4ll_3xp0n3nt_g0_brrr}`
+
+## Postmortem
+
+- `e=3` is one of the evergreen RSA foot-guns. "Small exponent + short plaintext + no padding" hands you the flag.
+- Real-world fix: use a larger public exponent like `e=65537` and randomize with OAEP. After OAEP, `m + r` reaches close to the bit-width of `n` and the root attack stops working.
+- In CTFs, if `e` is small enough to fit on a single hand — `2, 3, 5, 7` — try this first: integer `e`-th root and check for exact. If not exact, walk the chain: Håstad → Coppersmith → Wiener.

