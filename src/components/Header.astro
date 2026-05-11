@@ -58,4 +58,6 @@ const nav = [
   btn?.addEventListener('click', () => {
     const isDark = document.documentElement.classList.toggle('dark');
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    document.dispatchEvent(new CustomEvent('theme-changed', { detail: { dark: isDark } }));
   });
+</script>
