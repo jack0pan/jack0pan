@@ -65,5 +65,15 @@ const htmlLang = t(lang, 'site.locale');
       <slot />
     </main>
     <Footer lang={lang} />
+
+    <script>
+      const blocks = document.querySelectorAll('pre.mermaid');
+      if (blocks.length) {
+        const { default: mermaid } = await import('mermaid');
+        const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'default';
+        mermaid.initialize({ startOnLoad: false, theme, securityLevel: 'strict' });
+        await mermaid.run({ nodes: Array.from(blocks) as HTMLElement[] });
+      }
+    </script>
   </body>
 </html>

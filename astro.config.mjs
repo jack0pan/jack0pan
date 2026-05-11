@@ -34,7 +34,7 @@ export default defineConfig({
       wrap: true,
     },
     rehypePlugins: [
-      [rehypeMermaid, { strategy: 'inline-svg' }],
+      [rehypeMermaid, { strategy: 'pre-mermaid' }],
     ],
   },
 });
