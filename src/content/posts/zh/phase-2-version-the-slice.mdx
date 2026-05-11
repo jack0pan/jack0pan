@@ -1,0 +1,97 @@
+---
+title: "Phase 2：版本号挂在 slice 上，不挂在 snapshot 上"
+description: 微调出模型 v3 时你得能回答「哪些导出的校验进了这个模型」。把整个训练集快照下来是显眼的答案、也是错的答案。版本化输入和推导过程；训练集是它们的函数。
+pubDate: 2026-05-11
+tags: [ml ops, 可复现性, hitl]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+<Callout type="note">
+  四篇 Phase-2 设计笔记的第 4 篇。还没 ship。
+</Callout>
+
+你微调出了模型 `v3`。有人问：「哪些导出的校验进了这个模型？」朴素答案是把整个训练集 snapshot 一份、打 tag `v3`。小规模能 work，比你预期更早就 work 不下去。
+
+## Snapshot 的隐性成本
+
+「snapshot 一份训练集」很诱人，因为它是一个**字面**的答案：文件在这儿，这就是训练 `v3` 的东西。代价后面才出现：
+
+- **存储。** 每轮训练集是几 GB 的 parquet（逐帧关键点、bbox、动作标签）。一年周更微调 ≈ 100GB 的高度重复 snapshot。绝对值不贵，但「这是啥目录、为啥每块盘上都有」很贵。
+- **漂移检测。** 三个月后你发现 `harvest.py` 过滤逻辑里有 bug——比如不小心把 cancelled 的标注放进来了——你没法快速判断哪些 snapshot 受影响。每份 snapshot 都是不透明的。
+- **复现剧场。** 「这是训练集」如果读它的代码变了就没用。Snapshot 复现**字节**，不复现**行为**。
+
+所以：**别**版本化 snapshot。**版本化输入和推导**。
+
+## 「slice」到底是啥
+
+一个训练 slice 是三样东西的确定性函数：
+
+1. **Label Studio 导出 SHA(s)**——导出给你的精确字节。LS 导出是 JSON，哈希它。
+2. **过滤规则**——`is_ground_truth`、双人一致性阈值等。这是 harvest 代码的一个版本。
+3. **格式转换代码版本**——把 LS JSON 转成逐帧 parquet 的 `harvest.py` 版本。
+
+```
+slice(v_N) = derive(
+    exports = [sha_a, sha_b, sha_c],
+    filter_version = "harvest@v1.4.2",
+    format_version = "harvest@v1.4.2",
+)
+```
+
+复现模型 `v3` = 重跑这次推导。如果结果跟你记忆里的字节不一样，说明哪里漂了，你发现了。
+
+## 你提交什么
+
+每次微调，提交一个小小的 `slice.json`：
+
+```json
+{
+  "slice_version": "v3",
+  "trained_at": "2026-05-11T14:32:00Z",
+  "exports": [
+    { "project": "a", "sha256": "abc123...", "path": "label_studio/task_01/project_a_video.json" },
+    { "project": "b", "sha256": "def456...", "path": "label_studio/task_01/project_b_handobj.json" },
+    { "project": "c", "sha256": "789abc...", "path": "label_studio/task_01/project_c_body.json" }
+  ],
+  "harvest_version": "harvest@v1.4.2",
+  "filter_overrides": {
+    "min_pixel_agreement": 5,
+    "boundary_weight": 0.5
+  },
+  "model_outputs": {
+    "hand_keypoint": "models/hand_kp/v3.pt",
+    "yolo_objects": "models/yolo/v3.pt",
+    "segmenter": "models/segmenter/v3.pkl"
+  }
+}
+```
+
+这就是产物。~1KB，进 git。导出本身存一份（LS 导，按 SHA 归档；不是每次微调复制一份）。
+
+## 这能逮到什么
+
+两个月后模型行为怪异、你顺着追到 `v3`：
+
+- `harvest_version` 告诉你哪个版本的过滤逻辑产出了这个 slice。如果之后修过 bug，你知道 `v3` 是否受影响。
+- 导出 SHA 告诉你 LS 导出本身有没有变过（不该变；如果变了说明有人重新导出过）。检测到。
+- 从 `slice.json` 重跑 `derive(...)` 确定性地复现训练集。如果 parquet 字节跟缓存版本对不上，说明你的 `harvest.py` 改过、影响了这个 slice，**而你没 bump 版本号**。
+
+最后这一条最有价值。推导函数变了就强制 bump 版本号。一个 `harvest --check` 在 CI 里跑——「`harvest_version` 跟某个已发布 slice 一致但产出字节不同」就让它响亮地挂——值得第一天写。
+
+## 80% snapshot、20% 推导的混合
+
+实际上你还是会想缓存 parquet 产出——每次微调重跑推导不免费。Pattern 是：
+
+- `slice.json` 是真理来源。提交。小、持久。
+- parquet（真的训练数据）住在缓存里，按 `slice.json` 哈希索引。缓存未命中时再生成。
+- 导出住在归档里，按各自的 SHA 索引。不可变。
+
+你拿到了 snapshot 的「读得快」和推导的「确定性可重建」。
+
+## 总结
+
+- 每次微调 snapshot 训练集，存储重、复现性浅。
+- 版本化输入（导出 SHA）和推导（harvest 代码版本）。Slice 是它们的函数。
+- 每次微调 `~1KB` 的 `slice.json` 是持久产物；parquet 是缓存。
+- 第一天就写一个 `harvest --check` 来逮「版本没变但字节变了」的情况。

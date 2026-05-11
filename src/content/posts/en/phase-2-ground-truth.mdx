@@ -1,0 +1,98 @@
+---
+title: "Phase 2: what counts as ground truth"
+description: When you harvest Label Studio exports to fine-tune the next model, treating *everything* in the export as ground truth is how you train the model on its own predictions. The filters worth applying before a single byte goes into a training set.
+pubDate: 2026-05-11
+tags: [computer vision, label studio, fine-tuning, hitl]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+<Callout type="note">
+  This is the first of four Phase-2 design notes. Phase 2 (looping human corrections back into the model) isn't shipped yet — these posts are decisions I'm working through before building.
+</Callout>
+
+The [Phase-1 overview](/en/posts/video-pre-annotation-pipeline/) ended with "Phase 2 is where the human verifications loop back into the model". This is the first piece of Phase 2: deciding *which* parts of the human verifications you actually trust as labels.
+
+## The trap
+
+A Label Studio export contains everything LS knows about every task — including:
+
+- Pre-annotations the model wrote and **nobody touched**
+- Annotations the labeler started and then **cancelled**
+- Annotations marked **submitted** by a labeler
+- Annotations from tasks **skipped** because the labeler couldn't decide
+
+If you fine-tune on all of it, two things happen:
+
+1. **The "untouched" pre-annotations are the model's own predictions.** Training on them is self-distillation with no error signal. The model gets more confident about whatever it was already wrong about.
+2. **The skipped tasks are the hard cases.** Excluding them from training means the model never sees the cases it most needed to learn.
+
+Both pull the model in the wrong direction. The first one harder than the second.
+
+## The filters worth running
+
+Before any frame becomes a training sample, it has to pass:
+
+```python
+def is_ground_truth(annotation, task):
+    if annotation.was_cancelled:
+        return False
+    if not annotation.submitted_at:
+        return False                       # draft, never submitted
+    if not task.is_labeled:
+        return False                       # task as a whole not done
+    if task.was_skipped:
+        return False                       # labeler explicitly opted out
+    return True
+```
+
+That handles the trap above. The harder filter is two-person agreement.
+
+## The trust gradient
+
+Different projects produce different qualities of label, even with the same labeler:
+
+| Project | What's labeled | Per-frame trust | Failure mode |
+|---|---|---|---|
+| A | action timeline (video) | medium | segment boundaries fuzz by ±2-3 frames |
+| B | hand keypoints + obj bbox (per frame) | high | mostly accept or drag a single point |
+| C | body pose (per frame) | high | same |
+
+Project B and C corrections are dense pixel-level work. The labeler is correcting one frame and seeing it independently. Per-frame trust is high.
+
+Project A corrections are sparse. A 2-minute video has maybe 8 action segments; "approach starts at frame 423" is a single decision per segment. Boundary fuzz is real — different labelers will pick frame 421 vs 425 for the same approach. Per-frame trust on the boundary frames is medium at best.
+
+What to do with this:
+- For Project A training, weight the **center** of each segment higher than the boundary frames. A label that says "frames 423-512 = approach" is mostly correct in the middle, fuzzy at the ends.
+- For Project B/C training, treat the frame as is. The signal is dense and per-frame.
+
+## Two-person agreement is a label-quality signal
+
+If you have two-person review on Project B/C (two labelers each correct the same frame), the disagreement rate is a direct measurement of label quality:
+
+- Keypoint pixel disagreement < 5px → high-quality labels, keep both as training samples (or average them)
+- Disagreement 5-20px → moderate, keep one but flag for spot-check
+- Disagreement > 20px → label-quality issue, discard the frame entirely
+
+Disagreements > 20px usually mean either (a) the frame itself is ambiguous (motion blur, occlusion), or (b) one labeler made a mistake. Either way the frame is a poor training sample.
+
+This implies you want two-person review on at least a sampled subset. Not every frame — that doubles labeling cost — but enough to estimate disagreement rate per labeler, per task type.
+
+## What I'd build first
+
+A `harvest.py` step that:
+
+1. Reads the Project A/B/C LS exports (per-project JSON, the same shape `aggregate` produces).
+2. Applies the `is_ground_truth` filter above.
+3. For Project A, expands segment-level annotations into per-frame labels, with a weight column (1.0 in center, falling to 0.5 at boundaries).
+4. For Project B/C, joins two-person reviews when present, computes pixel disagreement, and emits per-frame labels with a quality tier (`hi`, `med`, `lo`).
+5. Writes a versioned training-set slice: `training_sets/v_N/{a,b,c}/*.parquet`.
+
+Phase 1's `layout` module gets extended to know these paths. The version `v_N` becomes part of the `EpisodeLayout` so downstream fine-tunes can read it back deterministically.
+
+## Recap
+
+- Most of an LS export isn't ground truth. Filter to submitted, non-cancelled, non-skipped, labeled tasks.
+- Project A boundaries are fuzzy; weight the center of segments higher than the ends.
+- Two-person agreement (where you have it) is the cheapest label-quality signal.
+- The `harvest` step is where these decisions land in code. Phase-1's path discipline carries over directly.

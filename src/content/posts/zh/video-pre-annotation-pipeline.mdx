@@ -140,4 +140,10 @@ def run_handmark_episode(...):
 
 Phase 2 是把人工校验回灌进模型的部分：从导出重新生成训练集、做微调。Phase-1 流水线被故意做成一次性的——它的职责就是给 Phase 2 一份干净的、好读的素材。三份 project JSON、质检 JSON、`aggregate` 这一步，都是围绕这个交接面长出来的。
 
+Phase-2 设计笔记（还没 ship）：
+- [什么算 ground truth →](/posts/phase-2-ground-truth/)
+- [别每次导出都重训 →](/posts/phase-2-retraining-cadence/)
+- [eval 集**绝不**能见过预标注 →](/posts/phase-2-clean-eval-set/)
+- [版本号挂在 slice 上，不挂在 snapshot 上 →](/posts/phase-2-version-the-slice/)
+
 如果你在做类似的东西：路径抽象先选好，剩下的都好办。

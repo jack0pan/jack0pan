@@ -1,0 +1,79 @@
+---
+title: "Phase 2: the eval set must never see pre-annotations"
+description: The single decision that most human-in-the-loop projects get wrong. If your eval labels were seeded by the model's own predictions, every F1 number you ever report is biased toward the model. The fix is cheap on day one, expensive on day forty.
+pubDate: 2026-05-11
+tags: [evaluation, hitl, ml ops]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+<Callout type="note">
+  Phase-2 design note #3 of 4. Not shipped yet.
+</Callout>
+
+The eval set is the single thing in a human-in-the-loop pipeline that has to stay clean across every iteration. Get this wrong and every other metric — segmenter F1, keypoint pixel error, action-classification accuracy — is a lie. This post is what "clean" means here and how to keep it that way.
+
+## The bias trap
+
+Phase 1 generates pre-annotations. Labelers verify them. If you simply hold out 10% of those verified episodes as your eval set, here's what's in those eval labels:
+
+- For frames where the model was correct, the labeler accepted the pre-annotation. Eval label = model prediction.
+- For frames where the model was wrong, the labeler corrected it. Eval label = corrected, but only for the wrong-looking frames the labeler noticed.
+- For frames where the model was *subtly* wrong, the labeler may have accepted. Eval label = model prediction, despite being wrong.
+
+Every frame in this eval set is correlated with the model's predictions. F1 on this set measures "agreement with a labeler who started from the model's output", not "agreement with truth". The model fine-tunes; the new model agrees with the eval labels more (it should — it's the same family of model); F1 goes up; everyone is happy; the model on real-world data is the same.
+
+This is the single decision most HITL projects get wrong. The metric tells you the loop is working when it isn't.
+
+## What "clean" actually requires
+
+The eval set has to satisfy three properties:
+
+1. **The labels were produced without ever seeing a model prediction.** Labelers annotate from scratch. No pre-fill, no "approve/reject" UI mode.
+2. **The episodes were chosen before any model touched them.** Don't sample eval episodes from "easy-to-label" candidates. Random over the available pool, fixed early, frozen.
+3. **The eval set is small enough to be reasonable and large enough to detect changes.** ~100 frames per task type is a reasonable starting point. Below ~30, you can't detect anything; above ~500, you've spent labeler time you could've spent on training data.
+
+A clean eval set is the same set, labeled the same way, every cycle. The episodes in it are off-limits for fine-tuning — they never appear in any training slice. You re-use the same labels every time, comparing model versions against the same target.
+
+## How to build it the first time
+
+Before the first Phase 1 run:
+
+1. Pick ~10 episodes per task. Random selection, not "interesting" episodes.
+2. Send them to two labelers each (or one labeler with a second-person review).
+3. Have them annotate from a blank UI — no model pre-annotations, no `predictions` field in the LS task JSON.
+4. Resolve disagreements (>5px keypoint or >5 frames on a segment boundary) manually.
+5. Pin the result. Hash it. Treat it as a versioned artifact.
+
+This is annoying — labeling from scratch is 3-5× slower than verifying pre-annotations. Budget for it on day one. You won't have time later.
+
+<Callout type="warn">
+  The temptation, six months in, to "expand" the eval set with newly-corrected episodes is strong. Don't. That contaminates it with model-influenced labels. If you need more eval coverage, repeat the from-scratch labeling process on a fresh sample.
+</Callout>
+
+## Tracking it
+
+Three numbers worth watching over time:
+
+1. **F1 / mAP / pixel-error on the eval set, per model version.** The real measure of progress. Plot this; nothing else.
+2. **Eval set size and last-modified date.** If it's been a year since you re-validated, your eval set may have aged into a distribution that's no longer representative.
+3. **Eval-vs-train data leakage.** Run a SHA check that no eval episode appears in any training slice. A one-line CI assertion.
+
+That third one will catch you eventually. Build it in.
+
+## When to refresh the eval set
+
+Two valid reasons:
+
+- **Distribution drift in the data.** New camera, new task, new environment. Old eval set isn't representative. Build a *new* clean eval set; archive the old one with its history.
+- **Eval saturation.** Model is at 99% on the eval set and you can't tell improvements apart from noise. Make the eval set harder by re-sampling toward edge cases or adding new task types.
+
+In both cases the rule is the same: **build a new clean eval set, don't extend the old one**. Comparing model versions across eval-set changes is comparing different measurements.
+
+## Recap
+
+- Eval labels seeded by model predictions are biased toward the model. F1 goes up while real performance doesn't.
+- Clean eval = labeled from scratch, sampled before any model touched the data, frozen, re-used every cycle.
+- Build it on day one. It's 3-5× more expensive per frame and worth every minute.
+- Watch eval-vs-train leakage with a CI assertion.
+- Refresh by replacement, never by extension.

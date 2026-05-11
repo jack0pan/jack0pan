@@ -140,4 +140,10 @@ Deep dive: [Keep tests pure-Python with lazy imports →](/en/posts/lazy-imports
 
 Phase 2 is where the human verifications loop back into the model: harvest exports, regenerate a training set, fine-tune. The Phase-1 pipeline is intentionally one-shot — its job is to give Phase 2 a clean substrate to read from. The three project JSONs, the QC JSON, and the `aggregate` step were all shaped by that handoff.
 
+Phase-2 design notes (not shipped yet):
+- [What counts as ground truth →](/en/posts/phase-2-ground-truth/)
+- [Don't retrain on every export →](/en/posts/phase-2-retraining-cadence/)
+- [The eval set must never see pre-annotations →](/en/posts/phase-2-clean-eval-set/)
+- [Version the slice, not the snapshot →](/en/posts/phase-2-version-the-slice/)
+
 If you're building something similar: pick the path abstraction first, then the rest.
