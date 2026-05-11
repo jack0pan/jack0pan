@@ -57,4 +57,13 @@ const htmlLang = t(lang, 'site.locale');
       const theme = localStorage.getItem('theme') ||
         (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
       document.documentElement.classList.toggle('dark', theme === 'dark');
-    
+    </script>
+  </head>
+  <body class="min-h-screen flex flex-col">
+    <Header lang={lang} />
+    <main class="flex-1 w-full max-w-3xl mx-auto px-5 py-10">
+      <slot />
+    </main>
+    <Footer lang={lang} />
+  </body>
+</html>
