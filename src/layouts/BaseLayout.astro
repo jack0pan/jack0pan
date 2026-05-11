@@ -1,0 +1,60 @@
+---
+import { SITE, type Lang } from '../consts';
+import { t } from '../i18n/ui';
+import { getAlternatePath } from '../i18n/utils';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/global.css';
+
+interface Props {
+  lang: Lang;
+  title?: string;
+  description?: string;
+  ogImage?: string;
+}
+
+const { lang, title, description, ogImage } = Astro.props;
+const siteTitle = t(lang, 'site.title');
+const siteDesc = description ?? t(lang, 'site.description');
+const fullTitle = title ? `${title} · ${siteTitle}` : siteTitle;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const alternate = getAlternatePath(Astro.url.pathname);
+const alternateURL = new URL(alternate.path, Astro.site);
+const htmlLang = t(lang, 'site.locale');
+---
+
+<!doctype html>
+<html lang={htmlLang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="canonical" href={canonicalURL} />
+
+    <link rel="alternate" hreflang={lang === 'zh' ? 'zh-CN' : 'en-US'} href={canonicalURL} />
+    <link rel="alternate" hreflang={alternate.lang === 'zh' ? 'zh-CN' : 'en-US'} href={alternateURL} />
+    <link rel="alternate" hreflang="x-default" href={new URL('/', Astro.site)} />
+
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title={siteTitle}
+      href={lang === 'zh' ? '/rss.xml' : '/en/rss.xml'}
+    />
+
+    <title>{fullTitle}</title>
+    <meta name="description" content={siteDesc} />
+    <meta name="author" content={SITE.author} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={siteDesc} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:locale" content={htmlLang} />
+    {ogImage && <meta property="og:image" content={new URL(ogImage, Astro.site)} />}
+
+    <script is:inline>
+      const theme = localStorage.getItem('theme') ||
+        (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+    

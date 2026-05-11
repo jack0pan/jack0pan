@@ -1,0 +1,31 @@
+---
+import PostLayout from '../../../layouts/PostLayout.astro';
+import readingTime from 'reading-time';
+import { getPostsByLang, shortSlug, findTranslation } from '../../../i18n/posts';
+
+export async function getStaticPaths() {
+  const posts = await getPostsByLang('en');
+  return posts.map(post => ({
+    params: { slug: shortSlug(post) },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await post.render();
+const minutes = Math.max(1, Math.ceil(readingTime(post.body, { wordsPerMinute: 250 }).minutes));
+const translation = await findTranslation(post);
+---
+
+<PostLayout
+  lang="en"
+  title={post.data.title}
+  description={post.data.description}
+  pubDate={post.data.pubDate}
+  updatedDate={post.data.updatedDate}
+  tags={post.data.tags}
+  readingMinutes={minutes}
+  translation={translation}
+>
+  <Content />
+</PostLayout>

@@ -1,0 +1,20 @@
+---
+import { type Lang } from '../consts';
+import { SITE, SOCIAL } from '../consts';
+import { t } from '../i18n/ui';
+
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+const rssHref = lang === 'zh' ? '/rss.xml' : '/en/rss.xml';
+---
+
+<footer class="border-t border-[var(--border)] mt-16">
+  <div class="max-w-3xl mx-auto px-5 py-8 flex items-center justify-between text-sm text-[var(--muted)]">
+    <span>© {new Date().getFullYear()} {SITE.author}</span>
+    <div class="flex gap-4">
+      <a href={SOCIAL.github} class="hover:text-[var(--fg)]">GitHub</a>
+      <a href={`mailto:${SOCIAL.email}`} class="hover:text-[var(--fg)]">Email</a>
+      <a href={rssHref} class="hover:text-[var(--fg)]">{t(lang, 'footer.rss')}</a>
+    </div>
+  </div>
+</footer>

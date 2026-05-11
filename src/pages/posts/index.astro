@@ -1,0 +1,27 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import { getPostsByLang } from '../../i18n/posts';
+import { t } from '../../i18n/ui';
+
+const lang = 'zh';
+const posts = await getPostsByLang(lang);
+
+const byYear = posts.reduce((acc, post) => {
+  const y = post.data.pubDate.getFullYear();
+  (acc[y] ||= []).push(post);
+  return acc;
+}, {} as Record<number, typeof posts>);
+const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
+---
+
+<BaseLayout lang={lang} title={t(lang, 'posts.all')}>
+  <h1 class="text-2xl font-semibold mb-8">{t(lang, 'posts.all')}</h1>
+  {posts.length === 0 && <p class="text-[var(--muted)]">{t(lang, 'posts.empty')}</p>}
+  {years.map(year => (
+    <section class="mb-10">
+      <h2 class="text-sm uppercase tracking-wider text-[var(--muted)] mb-2">{year}</h2>
+      {byYear[year].map(post => <PostCard post={post} lang={lang} />)}
+    </section>
+  ))}
+</BaseLayout>

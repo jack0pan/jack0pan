@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { t } from '../i18n/ui';
+
+const lang = 'zh';
+---
+
+<BaseLayout lang={lang} title={t(lang, 'about.title')}>
+  <article class="prose dark:prose-invert max-w-none">
+    <h1>关于</h1>
+    <p>
+      你好，我是潘杰，目前在数据平台领域做研发工作。
+    </p>
+    <p>
+      这个博客主要记录我在数据工程、计算机视觉数据流水线、以及一些工程化实践方面的探索。
+    </p>
+    <h2>联系</h2>
+    <ul>
+      <li>Email: <a href="mailto:hi@jackpan.me">hi@jackpan.me</a></li>
+      <li>GitHub: <a href="https://github.com/your-handle">@your-handle</a></li>
+    </ul>
+  </article>
+</BaseLayout>

@@ -1,0 +1,24 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { t } from '../../i18n/ui';
+
+const lang = 'en';
+---
+
+<BaseLayout lang={lang} title={t(lang, 'about.title')}>
+  <article class="prose dark:prose-invert max-w-none">
+    <h1>About</h1>
+    <p>
+      Hi, I'm Jack Pan, currently working on data platform engineering.
+    </p>
+    <p>
+      This blog is where I write about data engineering, computer vision data pipelines,
+      and general engineering practice.
+    </p>
+    <h2>Contact</h2>
+    <ul>
+      <li>Email: <a href="mailto:hi@jackpan.me">hi@jackpan.me</a></li>
+      <li>GitHub: <a href="https://github.com/your-handle">@your-handle</a></li>
+    </ul>
+  </article>
+</BaseLayout>

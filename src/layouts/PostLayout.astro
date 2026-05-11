@@ -1,0 +1,66 @@
+---
+import { type Lang } from '../consts';
+import { t } from '../i18n/ui';
+import BaseLayout from './BaseLayout.astro';
+import type { CollectionEntry } from 'astro:content';
+import { postUrl } from '../i18n/posts';
+
+interface Props {
+  lang: Lang;
+  title: string;
+  description?: string;
+  pubDate: Date;
+  updatedDate?: Date;
+  tags: string[];
+  readingMinutes: number;
+  translation?: CollectionEntry<'posts'> | null;
+}
+
+const {
+  lang, title, description, pubDate, updatedDate, tags, readingMinutes, translation,
+} = Astro.props;
+
+const locale = lang === 'zh' ? 'zh-CN' : 'en-US';
+const fmt = (d: Date) => d.toLocaleDateString(locale, {
+  year: 'numeric',
+  month: lang === 'zh' ? 'long' : 'short',
+  day: 'numeric',
+});
+const tagsBase = lang === 'zh' ? '/tags' : '/en/tags';
+---
+
+<BaseLayout lang={lang} title={title} description={description}>
+  <article>
+    <header class="mb-10 pb-8 border-b border-[var(--border)]">
+      <h1 class="text-3xl md:text-4xl font-bold tracking-tight leading-tight">
+        {title}
+      </h1>
+      <div class="mt-4 flex flex-wrap items-center gap-3 text-sm text-[var(--muted)]">
+        <time datetime={pubDate.toISOString()}>{fmt(pubDate)}</time>
+        <span>· {t(lang, 'post.readingTime', { min: readingMinutes })}</span>
+        {updatedDate && <span>· {t(lang, 'post.updatedAt')} {fmt(updatedDate)}</span>}
+      </div>
+      {tags.length > 0 && (
+        <div class="mt-3 flex flex-wrap gap-2">
+          {tags.map(tag => (
+            <a href={`${tagsBase}/${tag}/`} class="text-xs px-2 py-1 rounded bg-[var(--border)] hover:text-[var(--accent)]">
+              #{tag}
+            </a>
+          ))}
+        </div>
+      )}
+      {translation && (
+        <aside class="mt-5 px-4 py-3 rounded border border-[var(--border)] text-sm text-[var(--muted)]">
+          {t(lang, 'post.translation')} ·
+          <a href={postUrl(translation)} class="text-[var(--accent)] hover:underline ml-1">
+            {t(lang, 'post.translationLink')}
+          </a>
+        </aside>
+      )}
+    </header>
+
+    <div class="prose dark:prose-invert max-w-none">
+      <slot />
+    </div>
+  </article>
+</BaseLayout>

@@ -1,0 +1,25 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { getPostsByLang } from '../../../i18n/posts';
+import { t } from '../../../i18n/ui';
+
+const lang = 'en';
+const posts = await getPostsByLang(lang);
+const tagCount = new Map<string, number>();
+posts.forEach(p => p.data.tags.forEach(tag => tagCount.set(tag, (tagCount.get(tag) || 0) + 1)));
+const tags = [...tagCount.entries()].sort((a, b) => b[1] - a[1]);
+---
+
+<BaseLayout lang={lang} title={t(lang, 'tags.title')}>
+  <h1 class="text-2xl font-semibold mb-8">{t(lang, 'tags.title')}</h1>
+  <div class="flex flex-wrap gap-3">
+    {tags.map(([tag, count]) => (
+      <a
+        href={`/en/tags/${tag}/`}
+        class="px-3 py-1.5 rounded border border-[var(--border)] text-sm hover:border-[var(--accent)] hover:text-[var(--accent)]"
+      >
+        {tag} <span class="text-[var(--muted)]">{count}</span>
+      </a>
+    ))}
+  </div>
+</BaseLayout>

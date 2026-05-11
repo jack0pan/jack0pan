@@ -1,0 +1,31 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import { getPostsByLang } from '../../i18n/posts';
+import { t } from '../../i18n/ui';
+
+const lang = 'en';
+const posts = (await getPostsByLang(lang)).slice(0, 10);
+---
+
+<BaseLayout lang={lang}>
+  <section class="mb-12">
+    <h1 class="text-2xl font-semibold tracking-tight">{t(lang, 'site.title')}</h1>
+    <p class="mt-2 text-[var(--muted)]">{t(lang, 'site.description')}</p>
+  </section>
+
+  <section>
+    <h2 class="text-sm uppercase tracking-wider text-[var(--muted)] mb-2">
+      {t(lang, 'home.latest')}
+    </h2>
+    {posts.length === 0
+      ? <p class="text-[var(--muted)] py-6">{t(lang, 'posts.empty')}</p>
+      : posts.map(post => <PostCard post={post} lang={lang} />)}
+  </section>
+
+  <div class="mt-8">
+    <a href="/en/posts/" class="text-sm text-[var(--accent)] hover:underline">
+      {t(lang, 'home.viewAll')}
+    </a>
+  </div>
+</BaseLayout>
