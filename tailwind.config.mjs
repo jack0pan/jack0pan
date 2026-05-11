@@ -35,6 +35,17 @@ export default {
             },
           },
         },
+        invert: {
+          css: {
+            '--tw-prose-invert-body': '#f4f4f5',
+            '--tw-prose-invert-bold': '#fafafa',
+            '--tw-prose-invert-headings': '#fafafa',
+            code: {
+              backgroundColor: '#27272a',
+              color: '#f4f4f5',
+            },
+          },
+        },
       },
     },
   },
