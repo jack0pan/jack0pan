@@ -14,7 +14,6 @@ export default {
         DEFAULT: {
           css: {
             maxWidth: '72ch',
-            color: 'rgb(55 65 81)',
             'h1, h2, h3, h4': {
               fontWeight: '600',
               letterSpacing: '-0.01em',
