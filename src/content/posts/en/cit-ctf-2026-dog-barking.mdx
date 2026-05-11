@@ -1,0 +1,60 @@
+---
+title: "CIT CTF 2026 · Dog Barking: three bark durations, one custom encoding"
+description: 78 seconds of dog barks. Three distinct bark durations encode bit 0, bit 1, and the byte separator. Not Morse — a custom code.
+pubDate: 2026-05-06
+tags: [CTF, cit-ctf-2026, misc, audio]
+series: CIT CTF 2026
+---
+
+The attachment is a single `challenge.wav`. The description says:
+
+> I recorded this audio at the dogpark the other day and I think the dogs were trying to tell me something???
+
+A listen confirms it: a stream of crisp barks at near-uniform spacing.
+
+## Reconnaissance
+
+```bash
+$ file challenge.wav
+challenge.wav: RIFF (little-endian) data, WAVE audio, Microsoft PCM,
+               16 bit, mono 16000 Hz
+```
+
+Mono 16 kHz, ~78 s. The waveform shows pulses with similar amplitude and near-uniform silence between them. Morse comes to mind, but the silence gaps are too uniform — Morse needs at least two distinct silence widths (intra-character vs inter-character). The information is almost certainly in **bark duration** instead.
+
+## Finding the encoding
+
+Threshold a 20 ms moving-average envelope, segment each bark, measure durations. Histogram them:
+
+| duration | count |
+|---:|---:|
+| 0.098 s | 109 |
+| 0.112 s | 29 |
+| 0.155 s | 131 |
+
+Three clearly distinct durations. The natural split:
+
+- **short (0.098 s) → bit `0`**
+- **long  (0.155 s) → bit `1`**
+- **medium (0.112 s) → byte separator**
+
+The counts fit: 109 + 131 ≈ 240 bits, exactly 30 bytes; 29 medium barks are exactly the right number of separators between 30 bytes.
+
+## Decoding
+
+Split the bit stream on each medium bark — runs of exactly 8 bits, one byte each. Convert to ASCII:
+
+```bash
+$ python3 solve.py
+CIT{b4rking_up_th3_wr0ng_tr33}
+```
+
+`solve.py` lives in the repo. The pipeline is just envelope → threshold → duration histogram → split on separators → ASCII.
+
+`CIT{b4rking_up_th3_wr0ng_tr33}`
+
+## Postmortem
+
+- The "three distinct durations" reading is the whole challenge. The histogram does the work. The hard step in Misc audio is usually *what to measure*, not how to compute.
+- Custom encodings like this are common in Misc / Steganography. Heuristic: **if the raw signal discretizes into N distinct values, the payload is hiding in the arrangement of those N values**.
+- If a challenge is actually Morse rather than a custom code, look for **two** silence widths (intra-character vs inter-character). Use that as your "is this Morse?" anchor.

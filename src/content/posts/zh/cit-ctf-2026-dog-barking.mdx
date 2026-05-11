@@ -1,0 +1,60 @@
+---
+title: "CIT CTF 2026 · Dog Barking：三种长度的狗叫"
+description: 一段 78 秒的狗叫音频，三种 bark 时长分别对应比特 0、比特 1 和字节分隔符。不是摩斯，是自创编码。
+pubDate: 2026-05-06
+tags: [CTF, cit-ctf-2026, misc, audio]
+series: CIT CTF 2026
+---
+
+题目附了一个 `challenge.wav`，描述：
+
+> I recorded this audio at the dogpark the other day and I think the dogs were trying to tell me something???
+
+听一下确实是一连串清晰的「汪汪汪」，间隔很整齐。
+
+## 先做侦察
+
+```bash
+$ file challenge.wav
+challenge.wav: RIFF (little-endian) data, WAVE audio, Microsoft PCM,
+               16 bit, mono 16000 Hz
+```
+
+单声道 16 kHz，~78 秒。波形看起来是一串能量包络相近的脉冲，每只「汪」之间有几乎一致的静音间隔。先想到摩斯，但每个静音都一样长——摩斯需要至少两种间隔（点内 vs 字符间）。换个方向：编码可能在 **每个 bark 的时长**上。
+
+## 找规律
+
+写一段 20 ms 滑动窗的能量包络，过门限切分，得到每个 bark 的起止时间。把所有 bark 时长画直方图：
+
+| 时长 | 出现次数 |
+|---:|---:|
+| 0.098 s | 109 |
+| 0.112 s | 29 |
+| 0.155 s | 131 |
+
+三种长度，截然不同。两种自然的解释：
+
+- **短（0.098 s） → bit `0`**
+- **长（0.155 s） → bit `1`**
+- **中（0.112 s） → byte 分隔符**
+
+数量也对得上：109+131 ≈ 240 个比特，刚好 30 字节；中等时长 29 个，正好是 30 字节之间的 29 个分隔符。
+
+## 解码
+
+按中等时长切分 bit 流，每段恰好 8 个 bit，转成 ASCII：
+
+```bash
+$ python3 solve.py
+CIT{b4rking_up_th3_wr0ng_tr33}
+```
+
+完整 `solve.py` 在仓库里。核心就是「envelope → threshold → 时长分类 → 按分隔符切 → ASCII」这条流水线。
+
+`CIT{b4rking_up_th3_wr0ng_tr33}`
+
+## 复盘
+
+- 「三种时长」是这道题的关键信号——只要画一次直方图，整道题就解开了。Misc 类题最难的反而是「我该测量什么」，而不是「会不会算」。
+- 这类「自创编码」在 Misc / Steganography 里非常常见。判断标准就一条：**如果原始信号能离散化成几种值，那有效信号就藏在这几种值的排列里**。
+- 如果题目用真摩斯而不是这种自创编码，那应该有 **两种**间隔（点划之间 vs 字符之间）。把这个特征作为「这是不是摩斯」的判断锚点。
