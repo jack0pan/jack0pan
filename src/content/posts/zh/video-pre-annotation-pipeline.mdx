@@ -52,6 +52,8 @@ CLI 拆成四个原子子命令 + 一个编排器：
 
 一个 `aggregate` 步骤负责把 per-episode 的 JSON 合并成按 project 划分的任务文件——标注员实际导入的就是这几个文件。
 
+深挖：[为什么一个 episode 要拆成三个 Label Studio project →](/posts/three-label-studio-projects/)
+
 ## 两套互相独立的帧率
 
 管线里有两个 fps 旋钮，初看像一回事，其实互相独立：
