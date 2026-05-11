@@ -1,0 +1,70 @@
+---
+title: "CIT CTF 2026 · Server Components：Next.js 15 RSC 反序列化 RCE"
+description: 附件里 package.json 钉死 next@15.0.4，刚好命中今年披露的 RSC 反序列化漏洞。
+pubDate: 2026-05-08
+tags: [CTF, cit-ctf-2026, web, nextjs, cve]
+series: CIT CTF 2026
+---
+
+import Callout from '../../../components/Callout.astro';
+
+这道题的题面叫 *Server Components*，附件给了完整 Next.js 项目。`package.json` 一眼就把答案钉死：
+
+```json
+"next": "15.0.4",
+"react": "19.0.0"
+```
+
+Next.js 15.0.4 + App Router + React Server Components。这个版本正好覆盖 **CVE-2025-55182 / CVE-2025-66478** —— RSC payload 反序列化导致的 RCE。Dockerfile 里：
+
+```dockerfile
+RUN mkdir -p /opt && echo 'CIT{test_flag}' > /opt/flag.txt
+```
+
+flag 在 web root 之外，意思就是「必须 RCE，不能光靠任意文件读取」。
+
+<Callout type="info">
+  CTF 里 Web 题的「指纹三件套」：`package.json` / `requirements.txt` / `Dockerfile`。前两个告诉你框架和版本，第三个告诉你 flag 在哪。三个一对齐，剩下就是抄 PoC。
+</Callout>
+
+## 漏洞原理（简化版）
+
+RSC 的 wire format 允许字符串以 `$N:path:to:prop` 这种形式去引用其它 chunk 内部的属性。解析器在处理 `resolved_model` chunk 的 `_response` 对象时，没有校验 `_prefix` / `_formData.get` 这些内部字段能不能由用户控制。
+
+把 `then` 字段解析成 `$N:__proto__:then` 就能让 runtime 沿原型链跳到 `Object.prototype.then`，再经过几次属性重绑把 `_prefix` 字符串嗂进 `Function(_prefix)`，相当于拿到任意 JS 执行。
+
+剩下的就是常规 RCE：
+
+```js
+require('child_process').execSync('cat /opt/flag.txt')
+```
+
+输出怎么带回来？这个漏洞的惯用技巧是**主动抛 `NEXT_REDIRECT` 错误**，把 payload 放进 `digest` 字段里那个 URL 上，服务端会把它复制到响应的 `X-Action-Redirect` 头里——这样命令输出 base64 编码后会原样回显。
+
+## 利用
+
+直接照公开 PoC 写一个 `exploit.py`，关键点：
+
+- `Next-Action` + `X-Nextjs-Request-Id` 等 header 模拟 Server Action 请求；
+- multipart body 里 `name="0"` 是伪造的 resolved_model，带 `_prefix` 载荷；
+- `_prefix` 先用 `execSync` 取命令输出，base64 之后抛 `NEXT_REDIRECT`；
+- `name="1"`..`"N"` 塞 `null`，最后一份塞 `"$@0"` 触发对 chunk 0 的引用。
+
+```bash
+cd Web-ServerComponents
+uv run python exploit.py http://23.179.17.92:5555 'cat /opt/flag.txt'
+```
+
+```
+[status 303] X-Action-Redirect: NEXT_REDIRECT;push;/login?a=Q0lUe1IzYUNUXzFzX1Z1MW4zckBibDN9...
+--- output ---
+CIT{R3aCt_1s_Vu1n3r@bl3}
+```
+
+`CIT{R3aCt_1s_Vu1n3r@bl3}`
+
+## 复盘
+
+- 「框架版本号 + 近半年 CVE 列表」是 Web 题最快的解法。React 19 RSC 在去年底刚 GA，今年初就出了一批反序列化的洞，能背几个就够覆盖一票题。
+- 真线上 Next.js 别开「绕过 ESM lockdown」的 flag，patch 跟到 15.0.x 的最新点位。Vercel 默认配置一般 OK，自己跑的容器才是高危场景。
+- 这一类漏洞的范畴是「序列化层把字符串里的指令当代码执行」——RSC、Astro Server Islands、Remix 的 deferred loader 都共享同一类抽象，未来三年还会出。

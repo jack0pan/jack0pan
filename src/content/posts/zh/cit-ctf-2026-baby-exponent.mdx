@@ -1,0 +1,57 @@
+---
+title: "CIT CTF 2026 · Baby Exponent：e=3 的最朴素 RSA 利用"
+description: 公开指数 e=3，明文小到 m³ 没溢出 modulus，直接整数开三次方就能拿到。
+pubDate: 2026-05-07
+tags: [CTF, cit-ctf-2026, crypto, rsa]
+series: CIT CTF 2026
+---
+
+题面给得很干净：
+
+```
+n = 39753111046581583678049531864...（768 bit）
+e = 3
+c = 21208016443347524194488872231...（很短）
+```
+
+`e=3` 看到就该有反射：要么 Håstad（多组同明文不同 modulus），要么 **明文太小，根本没溢出 modulus**。这题是第二种。
+
+## 思路
+
+RSA 加密就是 `c = m^e mod n`。当 `m^e < n` 时，`mod n` 这步不起作用，`c = m^e` 直接成立。这时候只要对 `c` 整数开 `e` 次方就能拿到 `m`，flag 明文随之而出。
+
+`n` 长 768 bit，`c` 长度不到 268 bit，明显 `c << n`。`m` 大概 26~27 字节宽——刚好够装一句话 + flag 格式 `CIT{...}`。直接开三次方。
+
+## 求解
+
+```python
+from gmpy2 import iroot
+
+n = 39753111046581583678049531864...
+e = 3
+c = 21208016443347524194488872231...
+
+m, exact = iroot(c, 3)
+print("exact:", exact)
+print("m:", m)
+if exact:
+    mi = int(m)
+    b = mi.to_bytes((mi.bit_length() + 7) // 8, "big")
+    print("bytes:", b)
+```
+
+`gmpy2.iroot(c, 3)` 返回 `(root, is_exact_root)`。这里 `exact=True`，意味着 `m³ == c`，证明确实没溢出。
+
+```
+exact: True
+m: 27680038115913774460198308299617031311839022658531567335298462333
+bytes: b'CIT{sm4ll_3xp0n3nt_g0_brrr}'
+```
+
+`CIT{sm4ll_3xp0n3nt_g0_brrr}`
+
+## 复盘
+
+- `e=3` 是 RSA 最经典的几个坑之一。「小指数 + 短明文 + 无填充」三合一就直接送 flag。
+- 工程上修法：用 `e=65537` 这种较大的公开指数，加 OAEP 之类的随机化填充。`m + r` 经过 OAEP 之后长度就接近 `n` 的 bit-width 了，开方法直接失效。
+- CTF 里看到任何 `e` 小到「2、3、5、7」这种数字，几乎都可以试一遍：先开 `e` 次方看 exact 不 exact；不 exact 的话查 Håstad / Coppersmith / Wiener 这条链。

