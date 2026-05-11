@@ -13,15 +13,11 @@ This post is a tour of the architectural decisions I'd want to know before build
 
 ## The pipeline, in one line
 
-```mermaid
-flowchart LR
-    A["MediaPipe Hands + YOLO (ego)"] --> AS["action segmenter"]
-    B["MediaPipe Pose (exo)"]
-    S["review-frame sampler"]
-    AS --> LS["Label Studio JSON × 3 projects"]
-    B --> LS
-    S --> LS
-    LS --> QC["QC"]
+```
+MediaPipe Hands + YOLO (ego) ── action segmenter ──┐
+MediaPipe Pose (exo) ─────────────────────────────┤
+                                                   ├──► Label Studio JSON × 3 projects ──► QC
+review-frame sampler ─────────────────────────────┘
 ```
 
 CLI-wise that's four atomic subcommands plus an orchestrator:

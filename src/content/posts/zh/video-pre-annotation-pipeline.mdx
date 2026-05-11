@@ -13,15 +13,11 @@ import Callout from '../../../components/Callout.astro';
 
 ## 一句话讲完整条管线
 
-```mermaid
-flowchart LR
-    A["MediaPipe Hands + YOLO (ego)"] --> AS["动作分段器"]
-    B["MediaPipe Pose (exo)"]
-    S["review 帧采样器"]
-    AS --> LS["Label Studio JSON × 3 个 project"]
-    B --> LS
-    S --> LS
-    LS --> QC["质检"]
+```
+MediaPipe Hands + YOLO (ego) ── 动作分段器 ──┐
+MediaPipe Pose (exo) ───────────────────────┤
+                                              ├──► Label Studio JSON × 3 个 project ──► 质检
+review 帧采样器 ────────────────────────────┘
 ```
 
 CLI 拆成四个原子子命令 + 一个编排器：
