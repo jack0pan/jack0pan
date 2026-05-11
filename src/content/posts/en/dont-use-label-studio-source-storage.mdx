@@ -1,0 +1,68 @@
+---
+title: "Phase 1: Don't use Label Studio Source Storage for local files"
+description: A short warning. LS's "Cloud Storage → Source Storage" feature looks like exactly what you want for local data. Use it and you get tens of thousands of phantom tasks that collide with the ones you actually imported.
+pubDate: 2026-05-11
+tags: [label studio, data pipeline]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+A short warning, expanded from a section of the [Phase-1 overview](/en/posts/video-pre-annotation-pipeline/) — pointing Label Studio at a local directory via Source Storage is the obvious-looking choice and it's wrong.
+
+## What Source Storage looks like
+
+Label Studio has a feature under **Settings → Cloud Storage → Add Source Storage** that lets you point a project at a directory (or S3 bucket, or GCS bucket, etc.) of files. The UI says "Files in this storage will be available as tasks in this project". You think: perfect, I have a `data/review_frames/` directory full of JPEGs, I'll point a project at it, and every JPEG becomes a task. The local-data version of the cloud-bucket pattern.
+
+It even works the first time you try. You get the tasks. You start labeling.
+
+## What actually happens
+
+Source Storage **auto-creates a task for every file** under the configured directory, recursively. Every JPEG, every JSON, every leftover thumbnail. And it does this *on top of* whatever tasks you've imported via the **Import** button.
+
+The collision:
+
+1. You run your pre-annotation pipeline; it writes `data/label_studio/<task>/episodes/<ep>_project_b.json` per episode.
+2. You aggregate those into `project_b_handobj.json` and **Import** it into LS. Now you have N tasks with your pre-annotations attached.
+3. Source Storage is configured at `data/review_frames/`. It scans, finds your JPEGs, auto-creates **another** task per JPEG — but without your pre-annotations, because those came from the Import step.
+
+Now your project has two tasks per JPEG: the imported one (with predictions, what you want) and the Source-Storage-created one (bare, useless). The LS UI shows them as separate tasks; labelers click into the wrong half; you find out about it a day later when you check what got labeled.
+
+Worse, if Source Storage runs a sync, it will spawn tasks for `.DS_Store`, half-rendered JPEGs from a crashed run, the `.dvc` cache, etc. Task count explodes.
+
+## What works instead
+
+Skip Source Storage entirely. Use Label Studio's local-files server:
+
+```bash
+export LOCAL_FILES_SERVING_ENABLED=true
+export LOCAL_FILES_DOCUMENT_ROOT="$(pwd)/data"
+label-studio start --port 8080 --data-dir data/label-studio-data
+```
+
+That turns on a local file server at `/data/local-files/?d=<rel>`, where `<rel>` is a path relative to `LOCAL_FILES_DOCUMENT_ROOT`. Now in your task JSON, you reference files like:
+
+```json
+{
+  "data": {
+    "frame": "/data/local-files/?d=review_frames/ego/demo/001/frame_000090.jpg"
+  }
+}
+```
+
+LS serves the file when the labeler opens the task. No Source Storage, no phantom tasks, no auto-sync. You control which files become tasks by what's in your Import JSON.
+
+<Callout type="warn">
+  `LOCAL_FILES_SERVING_ENABLED` and `LOCAL_FILES_DOCUMENT_ROOT` must be exported into the same shell that runs `label-studio start`. Putting them in `.bashrc` and starting LS via a system service doesn't propagate. Easy hour to lose.
+</Callout>
+
+## Why Source Storage exists at all
+
+It's genuinely useful when you don't have a pre-annotation pipeline — when the files *are* the work units and you want LS to be the source of truth for "what needs labeling". For greenfield labeling, point Source Storage at a bucket and you get tasks for free.
+
+The moment you have a pipeline that generates `predictions` per task, that mental model breaks: the task's identity now lives in the pipeline's output JSON, not in the file. Source Storage and Import are then two systems both trying to own the task list, and they collide.
+
+## Recap
+
+- Source Storage auto-creates one task per file under the configured root. On a pre-annotation pipeline, that collides with your Import.
+- Use `LOCAL_FILES_SERVING_ENABLED=true` + `LOCAL_FILES_DOCUMENT_ROOT` and reference files as `/data/local-files/?d=<rel>` in task JSON.
+- Source Storage is fine for greenfield labeling. It's wrong for any pipeline where predictions seed the tasks.

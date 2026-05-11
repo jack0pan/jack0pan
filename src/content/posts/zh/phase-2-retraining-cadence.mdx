@@ -1,0 +1,80 @@
+---
+title: "Phase 2：别每次导出都重训"
+description: 每批校验完的 episode 从 Label Studio 导出后，最直觉的动作就是立刻微调。为啥别这么干，以及一个真的「这次重训值得」时才触发的便宜节奏闸。
+pubDate: 2026-05-11
+tags: [微调, hitl, ml ops]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+<Callout type="note">
+  四篇 Phase-2 设计笔记的第 2 篇。还没 ship——这是动手前梳理的节奏问题。
+</Callout>
+
+你刚从 Label Studio 导出里收完 ground truth、拿到一份新鲜的训练 slice。最自然的下一步念头是「现在重训」。**别**——别每次导出都重训。理由是什么、应该改用什么。
+
+## 诱惑
+
+管线把 episode 推过 Phase 1，标注员在 LS 复核、你导出。每次导出都是一次「胜利」——比昨天多了一些校验过的帧。为啥不重训？
+
+因为重训有三个从导出那一侧看不到的成本：
+
+1. **微调有方差。** 同样的 N 个样本跑一次微调 ≠「N 样本完美训练」的极限。同样数据、不同 seed 跑两次微调，F1 会差 1-2 个点。单批次微调在 eval 曲线上看就是噪声。
+2. **每次微调都让下游缓存失效。** Phase-1 的产出（预测 JSON、review 帧、LS 任务 JSON）是按模型 `v_N` 生成的。新模型出来 = 你想重新预标注的那些 episode 都要重跑 Phase 1、连带那些 review 帧。每 episode 几小时。
+3. **GPU 时间。** 一次有意义的微调：手部关键点模型 + 小 YOLO + 分段器 ≈ 每轮 2 小时 GPU。每批 10 个 episode 的校验就触发一次，大概 $50-100/轮，换来的结果多半动不了 eval 指标。
+
+所以：别每次导出都重训。问题在「**什么时候**」。
+
+## 「校验量够了」长啥样
+
+一个合理的触发：「自上次训练以来累计的校验 episode 跨过训练语料的某个比例」。具体：
+
+```python
+if (new_corrected_episodes >= 0.10 * cumulative_training_corpus):
+    trigger_retrain()
+```
+
+为啥是 10%：
+
+- 低于 ~5% 新数据，微调被噪声主导。改进信号被运行间方差冲掉。
+- 高于 ~20%，你把改进留在桌上了——新 episode 上的预测是更老的模型生成的，对标注员的帮助不如它本可以的那样大。
+
+10% 是粗略中点。是起点，不是调过的超参。
+
+## 还有什么该卡
+
+GPU 账单到来之前再看两条：
+
+1. **新校验得跨 task。** 如果新批次 80% 都来自同一个 `task_subdir`，重训会过拟到那个 task 的分布。等到校验分散了再训。
+2. **eval 集没漂。** 如果上次训练以来 eval 集变了（加了新的从零标的干净帧），上一版模型的 eval 数字就跟新版不能直接比。决定你测的是「模型改进」还是「新 eval 分布」；别混。
+
+## 我会先写什么
+
+每次 `aggregate` 之后跑一遍 `should_retrain.py`：
+
+```python
+def should_retrain(state) -> tuple[bool, str]:
+    delta = state.corrected_episodes_since_last_train
+    corpus = state.cumulative_training_corpus
+    if delta < 0.10 * corpus:
+        return False, f"需要 10% 增量，当前 {delta/corpus:.1%}"
+    if state.task_coverage_gini > 0.5:
+        return False, "校验过度集中在少数 task"
+    if state.eval_set_changed_since_last_train:
+        return False, "eval 集已漂，重训前先 pin 住"
+    return True, "可以训了"
+```
+
+只打到 stdout。**不要自动触发**；打印决策、让人决定要不要去开 GPU。基于定量阈值自动跑微调是「半夜 GPU 账单」的配方。
+
+## 一个正交情况：预测质量真的下降了
+
+如果标注员反馈这一轮预标注**比上一轮更难**改，无视节奏规则、立刻重训。那是回归信号，不是改进机会，节奏算式不适用。这事单独跟踪——按发布版本看校验率——持续回归当作「丢下手头一切」的事件处理。
+
+## 总结
+
+- 别每次导出都重训。方差主导、缓存失效、GPU 账单加起来。
+- 「语料的 10% 增量」是合理触发。后期再调。
+- 加两条闸：校验跨 task、eval 集自上次训练后没漂。
+- 打印决策；让人扣扳机。
+- 如果预标注质量回归了，无视节奏、立刻重训。

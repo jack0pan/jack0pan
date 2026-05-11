@@ -1,0 +1,97 @@
+---
+title: "Phase 2: version the slice, not the snapshot"
+description: When you fine-tune model v3, you need to be able to answer "which exported corrections went into it". Snapshotting the whole training set is the obvious answer and the wrong one. Track the inputs and the derivation; the training set is a function of them.
+pubDate: 2026-05-11
+tags: [ml ops, reproducibility, hitl]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+<Callout type="note">
+  Phase-2 design note #4 of 4. Not shipped yet.
+</Callout>
+
+You've fine-tuned model `v3`. Someone asks: "which exported corrections went into this model?" The naive answer is to snapshot the entire training set and tag it `v3`. It works at small scale and stops working faster than you expect.
+
+## The snapshot tax
+
+Snapshotting the training set is appealing because it's a literal answer: here's the file, this is what trained model `v3`. The costs show up later:
+
+- **Storage.** Each cycle's training set is a few GB of parquet (per-frame keypoints, bboxes, action labels). A year of weekly retrains is ~100GB of mostly-duplicate snapshots. Cheap in absolute terms, expensive in "what is this directory and why is it on every disk".
+- **Drift detection.** When you find a bug in your `harvest.py` filter logic three months later — say, you accidentally let cancelled annotations through — you can't easily tell which snapshots are affected. Each snapshot is opaque.
+- **Reproducibility theater.** "Here's the training set" doesn't help if the code that read it has changed. The snapshot reproduces *bytes*, not *behavior*.
+
+So: don't version the snapshot. Version the inputs and the derivation.
+
+## What "the slice" actually is
+
+A training slice is a deterministic function of three things:
+
+1. **The Label Studio export SHA(s)** — the exact bytes the export gave you. LS exports are JSON; hash them.
+2. **The filter rules** — `is_ground_truth`, two-person agreement threshold, etc. This is a version of the harvest code.
+3. **The format-conversion code version** — `harvest.py` version that turns LS JSON into per-frame parquet.
+
+```
+slice(v_N) = derive(
+    exports = [sha_a, sha_b, sha_c],
+    filter_version = "harvest@v1.4.2",
+    format_version = "harvest@v1.4.2",
+)
+```
+
+Reproducing model `v3` means re-running this derivation. If the result differs from the bytes you remember, you've discovered drift somewhere.
+
+## What you commit
+
+For each fine-tune, commit a tiny `slice.json`:
+
+```json
+{
+  "slice_version": "v3",
+  "trained_at": "2026-05-11T14:32:00Z",
+  "exports": [
+    { "project": "a", "sha256": "abc123...", "path": "label_studio/task_01/project_a_video.json" },
+    { "project": "b", "sha256": "def456...", "path": "label_studio/task_01/project_b_handobj.json" },
+    { "project": "c", "sha256": "789abc...", "path": "label_studio/task_01/project_c_body.json" }
+  ],
+  "harvest_version": "harvest@v1.4.2",
+  "filter_overrides": {
+    "min_pixel_agreement": 5,
+    "boundary_weight": 0.5
+  },
+  "model_outputs": {
+    "hand_keypoint": "models/hand_kp/v3.pt",
+    "yolo_objects": "models/yolo/v3.pt",
+    "segmenter": "models/segmenter/v3.pkl"
+  }
+}
+```
+
+That's the artifact. ~1KB. Goes in git. The exports themselves are stored once (LS exports them; you archive each unique SHA, not each retrain's copy).
+
+## What this catches
+
+When the model behaves weirdly two months from now and you trace it back to `v3`:
+
+- `harvest_version` tells you which filter logic produced the slice. If you've fixed a bug since, you know `v3` was affected.
+- The export SHAs tell you whether the LS exports themselves have changed (they shouldn't; if they have, someone re-ran an export). Detect this.
+- Re-running `derive(...)` from `slice.json` reproduces the training set deterministically. If the parquet bytes don't match the cached version, your `harvest.py` has changed in a way that affects this slice, and you didn't bump the version.
+
+That last property is the most valuable. The version bump should be forced whenever the derivation function changes. A small `harvest --check` that fails CI if `harvest_version` matches a previously-shipped slice but produces different bytes is worth writing.
+
+## The 80%-snapshot, 20%-derivation hybrid
+
+In practice you'll still want to cache the parquet output — re-running derivation on every fine-tune isn't free. The pattern is:
+
+- `slice.json` is the source of truth. Commit it. Tiny, durable.
+- The parquet (the actual training data) lives in cache, keyed by `slice.json` hash. Regenerate-on-miss.
+- The exports live in archive, keyed by their own SHA. Immutable.
+
+You get the "fast access" of snapshots and the "deterministic regeneration" of derivation.
+
+## Recap
+
+- Snapshotting the training set per fine-tune is storage-heavy and reproducibility-shallow.
+- Version the inputs (export SHAs) and the derivation (harvest code version). The slice is a function of them.
+- A `~1KB` `slice.json` per fine-tune is the durable artifact; the parquet is cache.
+- A `harvest --check` that catches "version unchanged but bytes differ" is worth writing on day one.

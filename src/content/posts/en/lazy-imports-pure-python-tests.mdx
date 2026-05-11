@@ -1,0 +1,93 @@
+---
+title: "Phase 1: Keep tests pure-Python with lazy imports"
+description: "`mediapipe`, `ultralytics`, `cv2` are slow to import and need model weights at runtime. The trick that keeps the test suite small, fast, and weights-free is putting those imports inside function bodies, not at module top level."
+pubDate: 2026-05-11
+tags: [python, testing, computer vision]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+Short deep dive on a pattern that the [Phase-1 overview](/en/posts/video-pre-annotation-pipeline/) called "boring but the thing that keeps CI cheap" — lazy imports for the inference-heavy libraries.
+
+## The problem
+
+A CV pipeline ends up depending on:
+
+- `mediapipe` — Hands, Pose. Slow to import (200ms+), wants model weight files at runtime.
+- `ultralytics` — YOLO. Even slower. Pulls in PyTorch.
+- `opencv-python` (`cv2`) — fast to import but a 60MB wheel.
+
+Tests don't need any of these. The tests that actually matter exercise:
+
+- JSON schema validation (`schema.py`)
+- The action segmenter (pure-python time-series logic)
+- The Label Studio JSON transform (pure-python dict munging)
+- Layout / path computation
+- QC checks
+- Sampling logic
+
+Zero of the above touches a tensor. But if the modules they import touch `mediapipe` at the top level, the test suite needs MediaPipe wheels installed *and* model weights downloaded. CI minutes evaporate.
+
+## The pattern
+
+Every inference-related import is **inside the function body** that uses it. Never at module top.
+
+```python
+# pipeline.py
+
+from .layout import EpisodeLayout
+from .schema import EpisodePredictions
+# no top-level mediapipe / ultralytics / cv2
+
+def run_handmark_episode(ego_video: Path, layout: EpisodeLayout) -> None:
+    import mediapipe as mp  # lazy
+    import cv2
+
+    # ... actual inference ...
+```
+
+That's it. The whole technique. Module is importable without the heavy deps; the heavy deps load only when the function is actually called.
+
+## What stays at module top
+
+The lazy-import rule applies to inference libraries specifically. Everything else stays at module top so type checkers and editors can resolve it:
+
+- Standard library: yes
+- `numpy`, `pydantic`, dataclasses, etc: yes
+- Project-internal imports: yes
+- `mediapipe`, `ultralytics`, `cv2`: **no**
+
+## What this buys
+
+Three things:
+
+1. **`pytest` runs without model weights.** `uv sync --extra dev` installs the test deps; tests run in under 1s without ever touching `mediapipe` / `ultralytics`. CI doesn't need to download ~300MB of `.task` and `.pt` files.
+2. **Faster cold imports for the CLI.** The top-level package imports in milliseconds even if mediapipe is installed. The CLI's `--help` and dry-run paths don't pay the inference-library import cost.
+3. **Tests serve as documentation that the function boundaries are clean.** If you accidentally couple a pure function to mediapipe, the test breaks loudly.
+
+## What it costs
+
+One thing, and it's small: lazy imports are slightly less discoverable. Your IDE's "find references" on `mp.solutions.hands` won't show the use unless it indexes inside function bodies (most do).
+
+You also can't `from mediapipe import ...` lazily without rebinding names per-call, so you accept `import mediapipe as mp` and `mp.solutions.hands.Hands(...)` at the call site. Cosmetic.
+
+## The rule you should write down
+
+Pre-commit / CI sanity check that's worth ten minutes to write:
+
+```bash
+# tests/conftest.py
+import sys
+assert "mediapipe" not in sys.modules
+assert "ultralytics" not in sys.modules
+assert "cv2" not in sys.modules
+```
+
+Put this at the top of `conftest.py`. If anyone ever moves a heavy import to module top, the entire test suite fails loudly with "mediapipe leaked into the test environment". Cheap insurance.
+
+## Recap
+
+- Top-level imports of `mediapipe` / `ultralytics` / `cv2` make tests need GPU-grade dependencies and model weights.
+- Lazy imports (inside function bodies) decouple module importability from inference dependencies.
+- Costs: minor IDE indexing friction. Benefits: under 1s test suite, no model downloads in CI, clean function boundaries.
+- Bake the rule into `conftest.py` so regressions fail loudly.

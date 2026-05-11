@@ -1,0 +1,49 @@
+---
+title: "Phase 1: Two fps knobs in a video pre-annotation pipeline"
+description: Inference frame rate and review-frame sampling look like one thing and aren't. What each knob actually buys, and what breaks if you treat them as the same.
+pubDate: 2026-05-11
+tags: [computer vision, data pipeline, mediapipe]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+Deep dive on a decision flagged in the [Phase-1 overview](/en/posts/video-pre-annotation-pipeline/) — the bit where one pipeline carries *two* independent fps knobs that always get conflated. The overview said don't conflate them. This is the longer version.
+
+## What each knob actually is
+
+**Inference fps** is how often MediaPipe / YOLO run on the source video. Default: the video's native fps. Strided down via `--inference-fps N`, which compiles to a frame stride passed to MediaPipe's iterator and YOLO's `vid_stride`.
+
+**Review-frame sampling** is how many JPEGs the human ever opens in Project B / C. Independent from inference. Knobs: `--review-fps`, or the per-project `--review-hand-fps` / `--review-pose-fps`, or the default four-signal strategy.
+
+They share the unit ("frames per second") and they share the substrate (the same video). That's everything they share.
+
+## What inference fps buys
+
+GPU time. A 2-minute clip at 60 fps native is 7200 inference frames per stream. Cut to 30 fps inference → 3600. On a batch of hundreds of clips that's a real cost saving.
+
+What it costs: per-frame motion signal. Action segmentation depends on densely sampled hand kinematics — angular velocity, position deltas, contact heuristics. Drop inference to 1 fps and the segmenter is reading from a frame every 60 source frames, with linear interpolation filling the gaps. Empirically F1 on the segmenter falls from ~72% (native fps) to noise.
+
+So: lowering inference fps saves GPU but lowers downstream accuracy on motion-driven tasks. Not free.
+
+## What review-frame sampling buys
+
+Human time. The bottleneck in the loop is the labeler, not the model. Cutting Project B from 100 review frames per episode to 30 is a 3× speedup in the slowest step.
+
+What it costs: coverage. Skip too many frames and rare events (a brief grasp, a dropped object) miss the review set, so the model never gets corrected on them. The four-signal default hedges by sampling boundaries and low-confidence frames; a pure uniform downsample doesn't.
+
+## Why they get conflated
+
+Both are "fps" knobs on a video. If someone asks "what's the framerate of the pipeline?" the answer is ambiguous. People reach for one knob and assume the other follows.
+
+A common failure mode: someone sets `--inference-fps 5` thinking it caps the whole pipeline. The segmenter starves; review frames get sampled from a sparse predictions JSON; everything downstream looks broken. The fix is just "don't touch inference fps unless you're spot-checking".
+
+<Callout type="warn">
+  Reserve `--inference-fps` for "I just want to see if a clip is parseable end-to-end". Production batches should run at native fps.
+</Callout>
+
+## What I'd monitor
+
+- **Inference fps stamped in metadata.** Each predictions JSON should carry the fps it was generated at. A downstream sanity check can then flag "this episode's predictions are at 1 fps but the segmenter expects native" before the segmenter silently outputs garbage.
+- **Review-frame count per episode.** Track the distribution. If the four-signal sampler starts producing 200-frame episodes, something is off with the confidence threshold or the bbox-jump detector.
+
+Conflating the two knobs is one of those mistakes that's only visible if you've made it once. Two-knob framing is the cheap insurance against making it twice.

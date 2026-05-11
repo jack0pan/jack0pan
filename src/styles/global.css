@@ -11,11 +11,11 @@
 }
 
 .dark {
-  --bg: #0a0a0a;
-  --fg: #e5e7eb;
-  --muted: #9ca3af;
-  --accent: #60a5fa;
-  --border: #262626;
+  --bg: #09090b;
+  --fg: #e4e4e7;
+  --muted: #a1a1aa;
+  --accent: #7dd3fc;
+  --border: #27272a;
 }
 
 html {
@@ -38,4 +38,17 @@ body {
 
 .prose p {
   text-justify: inter-ideograph;
+}
+
+.prose pre.mermaid {
+  background-color: var(--bg);
+  padding: 0;
+}
+
+.prose pre.mermaid svg {
+  background-color: var(--bg);
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
 }

@@ -1,0 +1,82 @@
+---
+title: "Phase 1：一个模块管所有磁盘上的路径"
+description: 为什么视频预标注管线会演化出一个独占路径计算的 `layout` 模块，以及当六个不同部分各自拼路径时会静默地坏掉什么。
+pubDate: 2026-05-11
+tags: [数据流水线, python, 架构]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+如果让我重做整条管线，**最后**才砍的重构就是路径模块。[Phase-1 概览](/posts/video-pre-annotation-pipeline/) 提了一句；这篇说说为啥它配单独占一格。
+
+## 六个需要知道东西在哪的地方
+
+视频预标注管线里至少有六个地方需要计算路径：
+
+1. `handmark`——ego 推理，写 `pre_annotations/<task>/<ep>_ego_predictions.json`
+2. `posemark`——exo 推理，写 `pre_annotations/<task>/<ep>_exo_pose.json`
+3. `segment`——读预测，写 `<ep>_actions.json`
+4. `export-ls`——读上面三份，写 review 帧 + LS 任务 JSON + QC
+5. `aggregate`——glob per-episode LS JSON，写按 project 划分的导入文件
+6. 质检脚本——读预测，写 `quality/<ep>_qc.json`
+
+每一个的起点都不一样（一个视频路径、一个预测 JSON、一个 task 目录），剩下的路径自己推。让任何一个自己拼路径，bug 是**静默**的：输出落到了微妙不同的目录里，aggregate 步骤啥也找不到，你花一下午 `ls` 来 diff 两个目录、想搞清楚是哪一步跟哪一步不一致。
+
+## 那两个 dataclass
+
+修法是 `layout` 模块里两个小 dataclass：
+
+- `TaskLayout`——知道一个 task 目录：源视频在哪、预测 JSON 在哪、按 project 划分的聚合 JSON 落在哪。
+- `EpisodeLayout`——知道一个 task 里的单 episode：ego/exo 视频路径、预测文件名、review 帧目录、按 project 划分的 LS 任务 JSON、质检 JSON，以及 Label Studio 用的 `/data/local-files/?d=<rel>` URL。
+
+其他模块只 import 这俩之一，然后调 `layout.predictions_json()` 或 `layout.review_frames_dir(view='ego')`。**别处不拼路径字符串。**
+
+```python
+@dataclass(frozen=True)
+class EpisodeLayout:
+    data_root: Path
+    task_subdir: str
+    episode_key: str
+
+    @property
+    def predictions_json(self) -> Path:
+        return self.data_root / "pre_annotations" / self.task_subdir / f"{self.episode_key}_ego_predictions.json"
+
+    def ls_task_json(self, project: Literal["a", "b", "c"]) -> Path:
+        return self.data_root / "label_studio" / self.task_subdir / "episodes" / f"{self.episode_key}_project_{project}.json"
+
+    def ls_url(self, rel: str) -> str:
+        return f"/data/local-files/?d={rel}"
+```
+
+（删过的简版。真实版本有 ~15 个路径方法。）
+
+## 两条重建路径
+
+精细的地方：`aggregate` 是从**和 `process` 完全不同的起点**重建出同一个 `EpisodeLayout`。`process` 拿到的是一个视频路径；`aggregate` 拿到的是一堆 per-episode LS JSON 的 glob。两者最终都要拿到同一个 episode 的同一组路径。
+
+这件事能 work 的唯一原因，是两边都调 `EpisodeLayout.from_video(...)` 和 `EpisodeLayout.from_ls_task_json(...)`，两个构造器算出来的 `(data_root, task_subdir, episode_key)` 完全一致。如果这俩构造器是路径计算的唯一来源，那两边的 layout 一定收敛。如果谁绕过去自己拼，layout 就漂了，`aggregate` 会**静默地聚合错的东西**。
+
+「单一来源」在这里的确切含义就是：**有一个**函数把视频路径转成 `EpisodeLayout`，**有一个**函数把 LS 任务 JSON 路径转回同一个 `EpisodeLayout`。互相对测。
+
+## 我每次都中途做的那个重构
+
+我从没在项目第一天就放 layout 模块。它总是以四个临时辅助函数的形态（`predictions_path_for(...)`、`review_dir_for(...)` 等等）散落在四个原子步骤里。等开始接 `aggregate` 那天，这四个辅助函数已经在大小写、分隔符选择、`episode_key` 到底在哪里被解析这些细节上漂得不像同一个项目了。
+
+把它们收敛到 `TaskLayout` + `EpisodeLayout`，每次都是中途的第一次重构。如果你信这条经验，第一天就做。
+
+## 我会给路径加版本号吗
+
+路径布局本身就是一种 schema。当你改它——比如把 `pre_annotations/` 拆成 `predictions/` 和 `actions/`——所有现存的磁盘数据集都瞬间落在错的路径上。两个 pattern 帮得上：
+
+- layout 模块里有一个 schema version 常量，撞它的人被迫显式迁移。
+- 紧挨着 dataclass 放一个 `migrate_v1_to_v2(data_root)` 函数，幂等地把文件挪到新布局。
+
+第一个数据集时是过度设计。到第三个数据集时你会想要它。
+
+## 总结
+
+- 六个地方需要计算路径；让任何一个走野路子，最终都会**静默地聚合错的东西**。
+- 两个 dataclass（`TaskLayout`、`EpisodeLayout`）独占磁盘上所有路径 + LS URL。
+- `process` 和 `aggregate` 从不同起点重建出同一份 layout。构造器互测才是这件事安全的根本。
+- 这个重构第一天做很便宜，第四十天做很疼。第一天做。

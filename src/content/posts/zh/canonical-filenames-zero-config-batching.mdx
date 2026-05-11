@@ -1,0 +1,95 @@
+---
+title: "Phase 1：规范文件名换零配置批跑"
+description: 一个像 `NN_NNN_ego.mp4` 这样的命名约定，能把整批跑的入参压到只剩一个 CLI 参数。为啥这件事便宜，又为啥它逼你**不**写一些代码。
+pubDate: 2026-05-11
+tags: [数据流水线, cli]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+[Phase-1 概览](/posts/video-pre-annotation-pipeline/) 里一个小但杠杆很高的决定深挖——让批模式只接一个参数的那个命名约定。
+
+## 约定本身
+
+源视频统一命名 `NN_NNN_{ego,exo}.mp4`，`NN` 是 task ID、`NNN` 是 episode 序号。例：`01_001_ego.mp4`、`01_001_exo.mp4`、`02_017_ego.mp4`。
+
+它们住在：
+
+```
+data/videos/ego/<task_subdir>/NN_NNN_ego.mp4
+data/videos/exo/<task_subdir>/NN_NNN_exo.mp4
+```
+
+就这些。没有 JSON sidecar、没有 manifest 文件、没有数据库。
+
+## 文件名编码了什么
+
+三样东西，全部靠一条正则推出来：
+
+- **`task_subdir`**——从路径里取：`videos/ego/<task_subdir>/...`。批次的名字。
+- **`task_id`**——开头的 `NN`。用来查动作模板（不同 task 的动作词表不一样）。
+- **`episode_key`**——`NN_NNN` 前缀，ego 和 exo 文件共用。
+
+ego ↔ exo 配对就是一次字符串替换：`NN_NNN_ego.mp4` → `NN_NNN_exo.mp4`。不需要配对逻辑。
+
+## 约定换来什么
+
+整批的稳态命令：
+
+```bash
+uv run pipeline process --task task_01
+```
+
+底下做的事：
+
+1. Glob `data/videos/ego/task_01/*.mp4` 当 ego 输入。
+2. 对每个 ego 文件：解析 `episode_key`、靠字符串替换得到 exo 路径、从 `NN` 推 `task_id`、查动作模板。
+3. 跑四个原子步骤。已有输出 JSON 的 episode 自动跳过。
+4. per-episode 的失败被 catch + 记日志；整批继续。
+5. 末尾 aggregate 一次。
+
+没有配置文件。没有 manifest。**文件系统本身就是 manifest。**
+
+## 它逼你**不**写什么
+
+这是真正有意思的部分。命名约定是负空间——它告诉你**不需要**写什么：
+
+- **没有 `tasks.yaml` manifest** 列每个 episode。glob 就是 manifest。
+- **没有配对表** 把 ego 和 exo 对起来。文件名对就是配对。
+- **没有 CLI 参数** 选「用哪套动作模板」。`NN` 前缀直接选。
+- **没有「哪些 episode 跑过了」的状态文件。** 输出 JSON 存在与否就是标记。
+
+上面每一条都本来是一段真实的代码。约定零成本，把它们全部干掉。
+
+<Callout type="note">
+  这套技巧能 scale 的前提是文件名守规矩。当有人把 `final_take_v3_REALLY_FINAL.mp4` 上传到同一个目录的瞬间，正则失败、那个 episode 被批次拒收。**响亮地失败**是这里的 feature，不是 bug。
+</Callout>
+
+## per-episode 失败隔离几乎不要钱
+
+一旦循环是「glob → 推派 → process」，把失败隔离开就是每个 episode 五行 `try/except`：
+
+```python
+for ego in sorted(glob_videos(task_subdir)):
+    try:
+        process_one(ego)
+    except Exception as e:
+        log.error("episode %s failed: %s", ego.name, e)
+        failed.append(ego.name)
+```
+
+批次结束打一份汇总。恢复 = 重跑同一条命令；跑过的 episode 因为 JSON 已存在被跳过。`--force` 强制全跑。
+
+这三件事的组合——按约定批跑 + 已完成跳过 + per-episode 隔离——是「一次性脚本」和「真在用的管线」之间的差距。
+
+## 约定失效的两个场景
+
+- **临时 / demo 视频** 不走规范命名。CLI 留了个显式路径模式（`--ego PATH --exo PATH --template "..."`）给它们用。在测试和单次 debug 时用，正式批跑不用。
+- **跨 task 的配对。** 如果 `task_01` 的第 17 个 episode 跟 `task_02` 的第 03 个是同一个场景，文件名表达不了。如果你真的需要这个，那你的需求已经超过约定能 cover 的范围了，去写 manifest 吧。我们不需要，所以不写。
+
+## 总结
+
+- `NN_NNN_{ego,exo}.mp4` + 一套目录约定，编码了批模式需要的所有信息。
+- 稳态是一条 CLI 命令、一个参数。
+- 约定换来的是「manifest、配对表、状态文件、模板参数」全部**不写**。
+- 失败隔离 + 已完成跳过让它真的能用，而不只是看起来聪明。

@@ -1,0 +1,68 @@
+---
+title: "Phase 1：别用 Label Studio 的 Source Storage 接本地文件"
+description: 一篇短的警示。LS 的「Cloud Storage → Source Storage」看起来就是为本地数据设计的。用了它，你会得到几万个跟 Import 进去的真任务冲突的幽灵 task。
+pubDate: 2026-05-11
+tags: [label studio, 数据流水线]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+[Phase-1 概览](/posts/video-pre-annotation-pipeline/) 里那条警示展开版——把 Label Studio 指向本地目录用 Source Storage 是看起来最自然的选择，也是错的。
+
+## Source Storage 长啥样
+
+Label Studio 在 **Settings → Cloud Storage → Add Source Storage** 下有个功能，可以让一个 project 指向一个目录（或者 S3 bucket、GCS bucket 等等）。UI 上写着「Files in this storage will be available as tasks in this project」。你想：完美，我有个 `data/review_frames/` 目录塞满 JPEG，指过去，每张 JPEG 变成一个 task。云端 bucket pattern 的本地版。
+
+第一次试还真能 work。task 出现了，开始标。
+
+## 实际发生什么
+
+Source Storage 会**给配置目录下每一个文件**（递归）**自动建一个 task**。每张 JPEG、每个 JSON、每张 thumbnail 残留。然后这些 task 会**叠加在**你通过 **Import** 按钮导入的 task **之上**。
+
+冲突场景：
+
+1. 你跑预标注管线，按 episode 写出 `data/label_studio/<task>/episodes/<ep>_project_b.json`。
+2. 把这些 aggregate 成 `project_b_handobj.json`，**Import** 进 LS。现在你有 N 个带预标注的 task。
+3. Source Storage 配在 `data/review_frames/`。它扫描目录，找到你的 JPEG，**再**给每张 JPEG 建一个 task——但这个 task **不带预标注**，因为预标注是 Import 那一步加的。
+
+现在每张 JPEG 在 project 里有两个 task：Import 进来的那份（带预测、你要的）和 Source Storage 自动建的那份（裸的、没用）。LS UI 把它们当两个 task 显示；标注员可能点进错的那半边；你一天后查谁标了什么的时候才发现。
+
+更糟的是，Source Storage 一旦跑 sync，会顺带给 `.DS_Store`、半渲染失败的 JPEG、`.dvc` 缓存等等都建 task。task 数量爆炸。
+
+## 正确做法
+
+完全跳过 Source Storage，用 LS 的本地文件服务：
+
+```bash
+export LOCAL_FILES_SERVING_ENABLED=true
+export LOCAL_FILES_DOCUMENT_ROOT="$(pwd)/data"
+label-studio start --port 8080 --data-dir data/label-studio-data
+```
+
+这会在 `/data/local-files/?d=<rel>` 开一个本地文件服务，`<rel>` 是相对 `LOCAL_FILES_DOCUMENT_ROOT` 的路径。然后任务 JSON 里就这么引文件：
+
+```json
+{
+  "data": {
+    "frame": "/data/local-files/?d=review_frames/ego/demo/001/frame_000090.jpg"
+  }
+}
+```
+
+标注员打开 task 时 LS 自己把文件吐出来。没有 Source Storage、没有幽灵 task、没有自动 sync。哪些文件成为 task 由你的 Import JSON 决定。
+
+<Callout type="warn">
+  `LOCAL_FILES_SERVING_ENABLED` 和 `LOCAL_FILES_DOCUMENT_ROOT` 必须 export 到**跑 `label-studio start` 的那个 shell**。塞进 `.bashrc`、然后用 systemd 启 LS 不会传过去。容易丢一小时。
+</Callout>
+
+## Source Storage 到底为啥存在
+
+它在你**没有**预标注管线、文件**本身**就是工作单元、希望让 LS 当「该标啥」的真理来源时是真的有用。从零开始打标，把 Source Storage 指向一个 bucket，task 白给。
+
+一旦你有了管线、给每个 task 带 `predictions`，这个心智模型就崩了：task 的身份现在住在管线输出的 JSON 里，不在文件里。这时 Source Storage 和 Import 就是两套都想拥有 task 列表的系统，必定撞车。
+
+## 总结
+
+- Source Storage 给配置根目录下每个文件自动建一个 task。有预标注管线的情况下跟 Import 撞。
+- 用 `LOCAL_FILES_SERVING_ENABLED=true` + `LOCAL_FILES_DOCUMENT_ROOT`，任务 JSON 里写 `/data/local-files/?d=<rel>`。
+- Source Storage 对从零开始的标注没问题。对任何「预测预填」的管线都是错的。

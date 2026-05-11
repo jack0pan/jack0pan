@@ -4,8 +4,8 @@ export const SITE = {
 };
 
 export const SOCIAL = {
-  github: 'https://github.com/your-handle',
-  email: 'hi@jackpan.me',
+  github: 'https://github.com/jack0pan',
+  email: 'i@jackpan.me',
 };
 
 export type Lang = 'zh' | 'en';

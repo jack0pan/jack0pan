@@ -1,0 +1,101 @@
+---
+title: "Phase 1：为什么一个 episode 要拆成三个 Label Studio project"
+description: 视频预标注多 project 模式深挖——什么逼出了拆分、一个 episode 怎么扇成三种 task、以及别和 Label Studio 的数据模型对着干。
+pubDate: 2026-05-11
+tags: [计算机视觉, label studio, 数据流水线]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+这篇深挖一个在 [Phase-1 概览](/posts/video-pre-annotation-pipeline/) 里点到的决定——一个 ego/exo 双视角 episode 要扇成**三个独立的 Label Studio project**。概览里说「别想搞合一起的聪明办法，老老实实拆三个」。这篇说清楚为啥。
+
+## 逼出拆分的那条约束
+
+Label Studio 的「task」携带**一份数据 + 一套标注界面**。界面是 XML 声明的——一棵由 `<Video>`、`<Image>`、`<Audio>`、`<KeyPoint>`、`<RectangleLabels>`、`<TimelineLabels>` 之类组件组成的树。
+
+两个组件要求**不同数据类型**就没法共存。`<Video>` 读视频 URL，`<Image>` 读图片 URL，没法从同一个 task 对象里取数据。所以这样：
+
+```xml
+<!-- 没问题，都基于 video -->
+<View>
+  <Video name="v" value="$video" />
+  <TimelineLabels name="actions" toName="v">
+    <Label value="approach" />
+  </TimelineLabels>
+</View>
+```
+
+是合法的，但这样：
+
+```xml
+<!-- 跑不通——Video 和基于 Image 的 KeyPoint 没法共享一个 task -->
+<View>
+  <Video name="v" value="$video" />
+  <Image name="i" value="$frame" />
+  <KeyPoint name="hand" toName="i" />
+</View>
+```
+
+跑不通。一个 task 一份数据源，约束就这一条。同一个 project 里塞上千个标签都没事，只要它们都挂在同一份数据源上。
+
+## 三个 project 各干啥
+
+三种不同的数据类型 → 三个独立的 project：
+
+| Project | 数据 | 标注界面 | 每 episode 的 task 数 |
+|---|---|---|---|
+| A | ego 视频 | `<TimelineLabels>` on `<Video>` | 1 |
+| B | ego 帧（~30–50 采样） | `<KeyPoint>` + `<RectangleLabels>` on `<Image>` | 每帧一个 |
+| C | exo 帧（~12 采样） | `<KeyPoint>` on `<Image>` | 每帧一个 |
+
+注意 task 数量的不对称。**一个 episode = 1 个视频 + 几十张图。** Project A 每 episode 一个 task；B 和 C 是每 episode **很多个** task。B 的批量导入文件有 `episodes × frames` 条记录；A 只有 `episodes` 条。
+
+## 预标注塞在 task JSON 里
+
+不直观的地方是：**模型预标注放哪里**。每个 Label Studio task 接受一个可选的 `predictions` 数组——这些标注在标注员打开任务时会预填进去。task JSON 长这样：
+
+```json
+{
+  "data": { "frame": "/data/local-files/?d=review_frames/01/001/frame_000090.jpg" },
+  "predictions": [{
+    "model_version": "phase-1-v0",
+    "result": [
+      { "type": "keypointlabels", "value": { "x": 41.2, "y": 62.8, ... } },
+      { "type": "rectanglelabels", "value": { "x": 30, "y": 50, "width": 18, "height": 22, ... } }
+    ]
+  }]
+}
+```
+
+Project B 的 `predictions` 带逐帧手部关键点 + 操作物体 bbox。标注员打开任务，看到的是已经画好的关键点和框——要么接受，要么拖。Project A 的预测带分段器在视频时间线上的动作段建议。Project C 带人体骨骼关键点。
+
+这就是让整条管线成为「**预**标注」而不是「从零标注工具」的关键——每个 task 都自带一份草稿。
+
+## aggregate 为啥要两段式
+
+Phase-1 先按 episode 写 task JSON（每 episode 每 project 一份，所以 `episodes × 3` 个文件），再 aggregate 成三个 `project_{a,b,c}_*.json` 导入文件。为啥不直接一次写最终的大文件？
+
+- **可恢复。** 每个原子步骤按 episode 写。第 17/100 个 episode 跑挂了，前 16 个稳稳留在盘上。
+- **可检查。** Per-episode JSON 小到能用编辑器打开看；aggregate 后是几兆的单文件。
+- **独立重跑。** 只挂的那几个 episode 单独重跑，再 aggregate 一次。
+
+aggregate 本身没啥逻辑——就是把 per-episode JSON 拼成 LS 的导入格式。有意思的结构都已经在 per-episode 文件里。
+
+## 什么时候**不**该拆
+
+启发式很窄：**当且仅当** Label Studio 的数据模型逼你拆，才拆。
+
+- **同种数据类型、不同标签集？** 一个 project。同一张图上两套 `<KeyPoint>`（左手 + 右手）→ 一个 project 配两个 keypoint 工具。
+- **同种任务、不同水准的标注员？** 一个 project，用 LS 的 review 功能。
+- **同一份数据被多个模型版本预标注？** 还是一个 project——task 的 `predictions` 数组接受多条，用 `model_version` 区分。
+
+反向的错误是「为了**看起来**整洁」过度拆分。每多一个 project，就多一份 XML 配置、多一条存储路径、多一次导入、多一处可能把路径映射搞错的地方。这里三个 project 不是某种聪明的设计——就是 Label Studio 约束逼出来的精确数量，多一个都没必要。
+
+## 总结
+
+- 拆分由 LS「一个 task 一种数据类型」的模型逼出来，不是我选的。
+- 一个 episode 在 A 是一个 task、在 B 和 C 是很多个 task。
+- 预标注通过 task 的 `predictions` 字段喂给标注员。
+- per-episode → aggregate 的两段式是为了可恢复 + 可检查，跟 LS 没关系。
+
+如果你在做类似的管线：数一下你**每个数据点**要标几种不同类型的数据，那就是你的 project 数量。

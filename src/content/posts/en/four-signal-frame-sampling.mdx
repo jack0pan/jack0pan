@@ -1,0 +1,72 @@
+---
+title: "Phase 1: Four signals for review-frame sampling"
+description: A uniform "every Nth frame" sampler wastes labeler time on near-identical frames the model already nailed. Four signals do better — segment boundaries, per-segment uniform, low confidence, bbox jumps.
+pubDate: 2026-05-11
+tags: [computer vision, data pipeline, label studio]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+Deep dive on the review-frame sampling strategy from the [Phase-1 overview](/en/posts/video-pre-annotation-pipeline/). The pitch in the overview: don't just uniform-sample at N fps — pick frames that are worth looking at. This post is the strategy.
+
+## What review-frame sampling is for
+
+Project B is "human verifies model's hand keypoints and operated-object bbox on N selected ego frames per episode". The whole point of sampling is to spend labeler time on frames where humans add value, not where the model was already correct.
+
+A uniform 1 fps downsample of a 2-minute clip is 120 frames. Project B's default density is 30–50. Cutting frames in half is fine if you're cutting the right half.
+
+## The four signals
+
+For Project B (hand + object on ego), the default sampler combines four signals:
+
+1. **Segment boundaries** — every frame where the action segmenter starts or ends a segment. These are the highest-information frames per second: the model is most likely to fuzz the start/end of an action by a few frames, and a single correction propagates to the whole segment.
+2. **Per-segment uniform** — 2 frames from inside each segment, uniformly spaced. Covers the mid-action state. Catches drift in keypoint tracking during the segment.
+3. **Low-confidence frames** — any frame where MediaPipe's hand-presence confidence drops below 0.7. Model uncertainty is a near-perfect proxy for "this is where you'll find errors".
+4. **Bbox-area jumps** — any frame where the operated-object bbox changes area by >50% from the previous frame. Usually means the detector flickered or jumped to a different object. Cheap to flag.
+
+For a 2-minute clip the union of these lands at 30–50 frames per Project-B task. Project C (body pose on exo) is plain uniform 12 frames per clip — body pose drifts more smoothly and the four-signal payoff is smaller.
+
+## Why uniform-N-fps fails
+
+The intuition that "1 fps = 120 frames, density looks reasonable" is wrong in two ways:
+
+- **Redundancy.** Most of those 120 frames are mid-action, model-confident, near-identical to the frame before. Labelers click through with no corrections; you paid for 120 frames of UI to get 5 frames of actual signal.
+- **Missing rare events.** A grasp that lasts 200ms gets sampled zero or one times at 1 fps. The model never gets corrected on it.
+
+Uniform sampling treats every second of video as equally interesting. It isn't.
+
+## Tunables
+
+The strategy has knobs:
+
+- `--review-hand-per-segment N` — frames per segment (default 2). Tighten for longer or more variable actions.
+- Confidence threshold for the low-conf signal (default 0.7). Lower → fewer flagged frames → smaller review set, but you'll miss borderline cases.
+- Bbox-jump threshold (default 50%). Lower → more sensitive → more false positives from camera motion.
+
+I've left these at defaults for a year. Tune only if the review-frame distribution starts looking pathological.
+
+## When to override with uniform fps
+
+Two scenarios where `--review-hand-fps N` (forcing uniform sampling) beats the four-signal default:
+
+- **Spot-checking a new dataset.** You don't trust the segmenter or the detector yet. Uniform sampling gives you a known density to compare against.
+- **Smoke test for a new task vocabulary.** Same reason. Uniform is predictable; the four-signal sampler's output depends on model behavior.
+
+For production batches, leave the default on. The point of the strategy isn't optimality — it's giving labelers frames that are worth looking at.
+
+<Callout type="note">
+  Project C uses uniform sampling because body pose drifts more smoothly across frames. The same four signals would mostly trigger on camera motion, not skeleton errors. The strategy isn't universal; it fits the failure modes of B specifically.
+</Callout>
+
+## What I'd monitor
+
+- **Average frames per Project-B task.** If it climbs from 35 to 80, something upstream is producing more low-confidence frames or more bbox jumps. Could be a model regression, could be a hard new task type, could be footage from a different camera.
+- **Labeler correction rate per signal.** If "low-confidence" frames are corrected 90% of the time but "per-segment uniform" frames are corrected 5% of the time, the per-segment density is too high. Use that to tune.
+
+## Recap
+
+- Uniform N-fps sampling spends labeler time on frames the model already nailed.
+- The four signals (segment boundaries, per-segment uniform, low-confidence, bbox-jump) pick frames where humans actually correct things.
+- Project B uses all four; Project C is plain uniform because body pose doesn't have the same failure modes.
+- Knobs exist for tuning but the defaults have held up.
+- Monitor frame count distributions and per-signal correction rates if you want to keep the sampler honest.

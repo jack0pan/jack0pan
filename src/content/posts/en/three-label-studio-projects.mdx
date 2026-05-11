@@ -1,0 +1,101 @@
+---
+title: "Phase 1: Why one episode becomes three Label Studio projects"
+description: A deep dive on the multi-project pattern for video pre-annotation — what forces the split, how one episode fans out, and when not to fight Label Studio's data model.
+pubDate: 2026-05-11
+tags: [computer vision, label studio, data pipeline]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+This is a deep dive on a decision flagged in the [Phase-1 overview post](/en/posts/video-pre-annotation-pipeline/) — the bit where one episode of dual ego/exo video fans out into **three separate Label Studio projects**. The overview said "don't try to be clever; just split it." This post explains why.
+
+## The constraint that forces the split
+
+A Label Studio "task" carries exactly one piece of data plus one labeling interface. The interface is declared as XML — a tree of components like `<Video>`, `<Image>`, `<Audio>`, `<KeyPoint>`, `<RectangleLabels>`, `<TimelineLabels>`.
+
+Two components can't coexist if they require **different data types**. `<Video>` reads from a video URL; `<Image>` reads from an image URL; they're not assignable from the same task object. So this:
+
+```xml
+<!-- Fine, both video-based -->
+<View>
+  <Video name="v" value="$video" />
+  <TimelineLabels name="actions" toName="v">
+    <Label value="approach" />
+  </TimelineLabels>
+</View>
+```
+
+works, but this:
+
+```xml
+<!-- Won't — Video + Image-based KeyPoint can't share a task -->
+<View>
+  <Video name="v" value="$video" />
+  <Image name="i" value="$frame" />
+  <KeyPoint name="hand" toName="i" />
+</View>
+```
+
+doesn't. There's exactly one data source per task. That's the only constraint — you can stack a thousand labels in one project as long as they all attach to the same source.
+
+## What the three projects do
+
+Three distinct data types → three projects:
+
+| Project | Data | Labeling interface | Tasks per episode |
+|---|---|---|---|
+| A | ego video | `<TimelineLabels>` on `<Video>` | 1 |
+| B | ego frames (~30–50 sampled) | `<KeyPoint>` + `<RectangleLabels>` on `<Image>` | one per frame |
+| C | exo frames (~12 sampled) | `<KeyPoint>` on `<Image>` | one per frame |
+
+Notice the asymmetry. **An episode is one video, but tens of frames.** Project A emits 1 task per episode; B and C emit *many*. An aggregated import file for B has `episodes × frames` rows; for A it has `episodes` rows.
+
+## Pre-annotations live inside the task JSON
+
+The non-obvious part is *where* the model's predictions go. Each Label Studio task accepts an optional `predictions` array — annotations that render pre-filled when the labeler opens the task. The shape:
+
+```json
+{
+  "data": { "frame": "/data/local-files/?d=review_frames/01/001/frame_000090.jpg" },
+  "predictions": [{
+    "model_version": "phase-1-v0",
+    "result": [
+      { "type": "keypointlabels", "value": { "x": 41.2, "y": 62.8, ... } },
+      { "type": "rectanglelabels", "value": { "x": 30, "y": 50, "width": 18, "height": 22, ... } }
+    ]
+  }]
+}
+```
+
+For Project B that's per-frame hand keypoints + operated-object bbox. The labeler opens the task and sees the keypoints and box already drawn — they accept or drag. Project A carries the segmenter's proposed action ranges on the timeline. Project C carries body-pose keypoints.
+
+That's what makes this a *pre*-annotation pipeline rather than a label-from-scratch tool: every task ships with a draft.
+
+## Aggregate is necessary because per-episode JSONs proliferate
+
+Phase-1 writes per-episode task JSONs first (one file per episode per project, so `episodes × 3` files), then aggregates them into three `project_{a,b,c}_*.json` import files. Why the two-step?
+
+- **Resumability.** Each atomic step writes one episode at a time. If episode 17 of 100 crashes, the first 16 stay on disk.
+- **Inspection.** Per-episode JSONs are small enough to open in an editor; the aggregate is a single multi-megabyte file.
+- **Independent reruns.** Re-render only the failing episodes, then re-aggregate.
+
+The aggregate step itself is mechanical — it concatenates per-episode JSONs into LS's import format and that's it. The interesting structure already lives in the per-episode files.
+
+## When *not* to split
+
+The heuristic is narrow: split if and only if Label Studio's data model forces you.
+
+- **Same data type, different label sets?** One project. Two `<KeyPoint>` configs on the same image (left hand + right hand) → one project, two keypoint tools.
+- **Same task, different annotator tiers?** One project. Use LS's review feature.
+- **Same data, multiple model versions seeding it?** Still one project — the task's `predictions` array accepts multiple entries with `model_version` distinguishing them.
+
+The opposite mistake is over-splitting because it *feels* tidier. Every extra project is one more XML config, one more storage path, one more import step, one more place for path-mapping to break. The three-project count here isn't clever design — it's the precise number Label Studio's constraint forces, and no more.
+
+## Recap
+
+- The split is forced by LS's "one data type per task" model.
+- An episode is one task in Project A, many tasks in B and C.
+- Pre-annotations seed the labeler via the task's `predictions` field.
+- The per-episode → aggregate two-step is for resumability and inspection, not for any LS reason.
+
+If you're building a similar pipeline: count the distinct data types you need to label *per data point*. That's your project count.

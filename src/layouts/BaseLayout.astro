@@ -41,6 +41,7 @@ const htmlLang = t(lang, 'site.locale');
       title={siteTitle}
       href={lang === 'zh' ? '/rss.xml' : '/en/rss.xml'}
     />
+    <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
 
     <title>{fullTitle}</title>
     <meta name="description" content={siteDesc} />
@@ -57,4 +58,44 @@ const htmlLang = t(lang, 'site.locale');
       const theme = localStorage.getItem('theme') ||
         (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
       document.documentElement.classList.toggle('dark', theme === 'dark');
-    
+    </script>
+  </head>
+  <body class="min-h-screen flex flex-col">
+    <Header lang={lang} />
+    <main class="flex-1 w-full max-w-3xl mx-auto px-5 py-10">
+      <slot />
+    </main>
+    <Footer lang={lang} />
+
+    <script>
+      const blocks = document.querySelectorAll<HTMLElement>('pre.mermaid');
+      if (blocks.length) {
+        const nodes = Array.from(blocks);
+        const sources = new Map<HTMLElement, string>(
+          nodes.map(b => [b, b.textContent ?? ''])
+        );
+        const { default: mermaid } = await import('mermaid');
+
+        const render = async () => {
+          const isDark = document.documentElement.classList.contains('dark');
+          const bg = getComputedStyle(document.documentElement)
+            .getPropertyValue('--bg').trim();
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: isDark ? 'dark' : 'forest',
+            themeVariables: { background: bg },
+            securityLevel: 'strict',
+          });
+          for (const b of nodes) {
+            b.removeAttribute('data-processed');
+            b.textContent = sources.get(b) ?? '';
+          }
+          await mermaid.run({ nodes });
+        };
+
+        await render();
+        document.addEventListener('theme-changed', render);
+      }
+    </script>
+  </body>
+</html>

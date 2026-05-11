@@ -14,7 +14,6 @@ export default {
         DEFAULT: {
           css: {
             maxWidth: '72ch',
-            color: 'rgb(55 65 81)',
             'h1, h2, h3, h4': {
               fontWeight: '600',
               letterSpacing: '-0.01em',
@@ -32,6 +31,17 @@ export default {
               backgroundColor: 'rgb(24 24 27)',
               padding: '1rem 1.25rem',
               borderRadius: '0.5rem',
+            },
+          },
+        },
+        invert: {
+          css: {
+            '--tw-prose-invert-body': '#f4f4f5',
+            '--tw-prose-invert-bold': '#fafafa',
+            '--tw-prose-invert-headings': '#fafafa',
+            code: {
+              backgroundColor: '#27272a',
+              color: '#f4f4f5',
             },
           },
         },
