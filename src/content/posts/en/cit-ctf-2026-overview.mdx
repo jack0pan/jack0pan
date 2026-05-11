@@ -1,0 +1,33 @@
+---
+title: "CIT CTF 2026: a few writeups worth keeping"
+description: I played CIT CTF 2026 over the holiday — this is the index post for a short series of writeups covering Web, Crypto and Misc challenges.
+pubDate: 2026-05-11
+tags: [CTF, cit-ctf-2026, web, crypto, misc]
+series: CIT CTF 2026
+---
+
+import Callout from '../../../components/Callout.astro';
+
+Played [CIT CTF 2026](https://ctf.cyber-cit.club/) over the May holiday. Difficulty was friendly for entry-to-mid-tier players — Web leaned on "real" CVEs, Crypto leaned on textbook footguns, Misc leaned on lateral thinking. Good shape for writeups. This post indexes the five I'm bothering to write up.
+
+Challenge files and `solve.py` scripts live under `cit-ctf-2026/` in [jack0pan/ctf](https://github.com/jack0pan/ctf).
+
+## Posts in this series
+
+- [Debug Disaster — Flask debug page plus a forgotten `.env` route](/en/posts/cit-ctf-2026-debug-disaster/)
+- [A Massive Problem — mass assignment via `dict.update`](/en/posts/cit-ctf-2026-mass-assignment/)
+- [Server Components — RCE in Next.js 15 RSC deserialization](/en/posts/cit-ctf-2026-server-components/)
+- [Baby Exponent — the most textbook RSA `e=3` attack](/en/posts/cit-ctf-2026-baby-exponent/)
+- [Dog Barking — three bark durations on the audio track](/en/posts/cit-ctf-2026-dog-barking/)
+
+## A few meta-tips
+
+<Callout type="info">
+  On Web challenges, look in the attachment for a `package.json` / `requirements.txt` / `Dockerfile` first. Version strings frequently map to a single CVE.
+</Callout>
+
+- **Read the challenge name.** CIT titles often *are* the vulnerability keyword. *A **Mass**ive Problem* is mass assignment. *Debug Disaster* is the debug page. *Brainiac* is Brainfuck.
+- **Read the attachment structure.** The `Dockerfile` usually tells you whether the flag sits at a known path (so RCE is enough) or somewhere inside the web root (so file disclosure is enough).
+- **Read the dependency versions.** Framework version pinned to "the last six months" + the published CVE list. Server Components was solved this way.
+
+Detail per post. Each one puts *why this works* at the top and the copy-paste payload at the bottom.

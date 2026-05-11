@@ -1,0 +1,33 @@
+---
+title: "CIT CTF 2026：几道印象深的题"
+description: 五一假期跟着打了 CIT CTF 2026，把 Web / Crypto / Misc 几道题的解题思路整理成系列。这篇是入口。
+pubDate: 2026-05-11
+tags: [CTF, cit-ctf-2026, web, crypto, misc]
+series: CIT CTF 2026
+---
+
+import Callout from '../../../components/Callout.astro';
+
+五一假期跟着 [CIT CTF 2026](https://ctf.cyber-cit.club/) 打了几天。题目难度对入门到中端选手挺友好，Web 偏「真实漏洞」、Crypto 偏「教科书坑」、Misc 偏脑洞，整体写起来比较出 writeup。这里挑了印象最深的几道整理成一个小系列。
+
+题源和 `solve.py` 都在仓库 [jack0pan/ctf](https://github.com/jack0pan/ctf) 的 `cit-ctf-2026/` 目录下。
+
+## 这个系列里要写的题
+
+- [Debug Disaster — Flask debug 调试页加忘记删的 `.env` 路由](/posts/cit-ctf-2026-debug-disaster/)
+- [A Massive Problem — `dict.update` 撑起的越权](/posts/cit-ctf-2026-mass-assignment/)
+- [Server Components — Next.js 15 RSC 反序列化 RCE](/posts/cit-ctf-2026-server-components/)
+- [Baby Exponent — `e=3` 的最朴素 RSA 利用](/posts/cit-ctf-2026-baby-exponent/)
+- [Dog Barking — 三种长度的狗叫](/posts/cit-ctf-2026-dog-barking/)
+
+## 几条挑题心得
+
+<Callout type="info">
+  Web 题先看附件里有没有 `package.json` / `requirements.txt` / `Dockerfile`，版本号经常直接对应一个 CVE。
+</Callout>
+
+- **看题目名**。CIT 的题目名很多直接是漏洞关键词。*A **Mass**ive Problem* 就是 Mass Assignment，*Debug Disaster* 就是 debug 页面，*Brainiac* 就是 Brainfuck。
+- **看附件结构**。`Dockerfile` 经常告诉你 flag 在哪个路径，意味着「能 RCE 就能拿 flag」还是「直接读 web root」。
+- **看依赖版本**。框架版本号 + 「最近 6 个月」的 CVE 列表，套出来就赢一半。Server Components 那道就是这么解掉的。
+
+具体的题往后看就行。每篇都把「**为什么这么解**」放在前面，复制粘贴的 payload 放在后面。
