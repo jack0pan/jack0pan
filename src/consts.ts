@@ -4,7 +4,7 @@ export const SITE = {
 };
 
 export const SOCIAL = {
-  github: 'https://github.com/your-handle',
+  github: 'https://github.com/jack0pan',
   email: 'hi@jackpan.me',
 };
 

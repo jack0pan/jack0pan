@@ -3,29 +3,61 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import { getPostsByLang } from '../../i18n/posts';
 import { t } from '../../i18n/ui';
+import { SOCIAL } from '../../consts';
 
 const lang = 'en';
-const posts = (await getPostsByLang(lang)).slice(0, 10);
+const posts = (await getPostsByLang(lang)).slice(0, 5);
+
+const topics = [
+  'data-platform/',
+  'cdp/',
+  'cv-pipelines/',
+  'annotation/',
+  'postgres/',
+  'docker/',
+];
+
+const githubHandle = SOCIAL.github.replace('https://github.com/', '');
 ---
 
 <BaseLayout lang={lang}>
-  <section class="mb-12">
-    <h1 class="text-2xl font-semibold tracking-tight">{t(lang, 'site.title')}</h1>
-    <p class="mt-2 text-[var(--muted)]">{t(lang, 'site.description')}</p>
+  <section class="font-mono text-sm leading-relaxed mb-10">
+    <p class="text-[var(--accent)]">$ whoami</p>
+    <div class="mt-3 pl-4 border-l border-[var(--border)] text-[var(--fg)]">
+      Jack Pan · data platform engineer. On the side I tinker with computer vision data pipelines.
+      Notes here are about things I've actually shipped, roughly one post a week.
+    </div>
   </section>
 
-  <section>
-    <h2 class="text-sm uppercase tracking-wider text-[var(--muted)] mb-2">
-      {t(lang, 'home.latest')}
-    </h2>
+  <section class="font-mono text-sm leading-relaxed mb-10">
+    <p class="text-[var(--accent)]">$ ls topics/</p>
+    <div class="mt-3 pl-4 border-l border-[var(--border)] grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-[var(--muted)]">
+      {topics.map(topic => <span>{topic}</span>)}
+    </div>
+  </section>
+
+  <section class="mb-4">
+    <p class="font-mono text-sm text-[var(--accent)] mb-2">$ ls posts/ | head</p>
     {posts.length === 0
       ? <p class="text-[var(--muted)] py-6">{t(lang, 'posts.empty')}</p>
       : posts.map(post => <PostCard post={post} lang={lang} />)}
   </section>
 
-  <div class="mt-8">
-    <a href="/en/posts/" class="text-sm text-[var(--accent)] hover:underline">
+  <div class="mb-10 font-mono text-sm">
+    <a href="/en/posts/" class="text-[var(--accent)] hover:underline">
       {t(lang, 'home.viewAll')}
     </a>
   </div>
+
+  <section class="font-mono text-sm leading-relaxed">
+    <p class="text-[var(--accent)]">$ cat contact</p>
+    <dl class="mt-3 pl-4 border-l border-[var(--border)] grid grid-cols-[4.5rem_1fr] gap-y-1 text-[var(--muted)]">
+      <dt>github</dt>
+      <dd><a class="hover:text-[var(--accent)] hover:underline" href={SOCIAL.github}>{githubHandle}</a></dd>
+      <dt>email</dt>
+      <dd><a class="hover:text-[var(--accent)] hover:underline" href={`mailto:${SOCIAL.email}`}>{SOCIAL.email}</a></dd>
+      <dt>rss</dt>
+      <dd><a class="hover:text-[var(--accent)] hover:underline" href="/en/rss.xml">/en/rss.xml</a></dd>
+    </dl>
+  </section>
 </BaseLayout>
