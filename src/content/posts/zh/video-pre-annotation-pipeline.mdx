@@ -54,7 +54,7 @@ CLI 拆成四个原子子命令 + 一个编排器：
 
 ## 两套互相独立的帧率
 
-技术文档里写 30 fps，但实际素材是 59.94 fps（NTSC）。「**不要**在任何地方写死 30」其实是最简单的那条决定。比这难的是把两个总被混在一起的 fps 旋钮拆清楚：
+管线里有两个 fps 旋钮，初看像一回事，其实互相独立：
 
 1. **推理帧率**——MediaPipe / YOLO 多久跑一次。默认就是视频原生 fps。`--inference-fps N` 会按 stride 跳帧（MediaPipe 自己步进，YOLO 用 `vid_stride`）。JSON key 仍然是真实帧号，`duration_frames` 的算术不会错位。
 2. **review 帧采样**——Project B / C 里标注员最终会看到多少张 JPEG。这个跟推理完全独立。

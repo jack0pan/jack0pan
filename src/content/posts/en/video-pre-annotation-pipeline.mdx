@@ -54,7 +54,7 @@ An `aggregate` step merges per-episode JSONs into per-project task files, which 
 
 ## Two independent frame rates
 
-The spec said 30 fps. The actual footage was 59.94 fps (NTSC), and **never** hard-coding 30 turned out to be the easy decision. The harder one was untangling two different fps knobs that always get conflated:
+There are two fps knobs in this pipeline that look like one thing and aren't. Worth untangling:
 
 1. **Inference fps** — how often MediaPipe and YOLO run. Defaults to native fps. `--inference-fps N` strides the video so MediaPipe / YOLO's `vid_stride` skip frames. JSON keys stay real frame indices, so `duration_frames` math doesn't drift.
 2. **Review-frame sampling** — how many JPEGs the human ever sees in Project B / C. Independent from inference.
