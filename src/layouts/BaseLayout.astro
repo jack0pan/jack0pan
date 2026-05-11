@@ -79,7 +79,7 @@ const htmlLang = t(lang, 'site.locale');
           const isDark = document.documentElement.classList.contains('dark');
           mermaid.initialize({
             startOnLoad: false,
-            theme: isDark ? 'dark' : 'default',
+            theme: isDark ? 'dark' : 'forest',
             securityLevel: 'strict',
           });
           for (const b of nodes) {
