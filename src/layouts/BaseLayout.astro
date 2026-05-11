@@ -77,9 +77,12 @@ const htmlLang = t(lang, 'site.locale');
 
         const render = async () => {
           const isDark = document.documentElement.classList.contains('dark');
+          const bg = getComputedStyle(document.documentElement)
+            .getPropertyValue('--bg').trim();
           mermaid.initialize({
             startOnLoad: false,
             theme: isDark ? 'dark' : 'forest',
+            themeVariables: { background: bg },
             securityLevel: 'strict',
           });
           for (const b of nodes) {

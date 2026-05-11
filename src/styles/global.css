@@ -39,3 +39,16 @@ body {
 .prose p {
   text-justify: inter-ideograph;
 }
+
+.prose pre.mermaid {
+  background-color: var(--bg);
+  padding: 0;
+}
+
+.prose pre.mermaid svg {
+  background-color: var(--bg);
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+}
