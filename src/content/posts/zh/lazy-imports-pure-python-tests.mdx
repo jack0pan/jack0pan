@@ -1,0 +1,93 @@
+---
+title: 用懒导入把 mediapipe / cv2 关在测试之外
+description: "`mediapipe`、`ultralytics`、`cv2` 导入慢、运行时还要模型权重。把这些 import 写在函数体里、不放在模块顶层，测试套件就能跑得又小又快、不下模型。"
+pubDate: 2026-05-11
+tags: [python, 测试, 计算机视觉]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+[Phase-1 概览](/posts/video-pre-annotation-pipeline/) 里被形容成「无聊但让 CI 便宜」的那个 pattern 深挖——给推理相关的重依赖做懒导入。
+
+## 问题长啥样
+
+一条 CV 管线最终会依赖：
+
+- `mediapipe`——Hands、Pose。导入慢（200ms+），运行时要模型权重文件。
+- `ultralytics`——YOLO。更慢，还顺带把 PyTorch 拉进来。
+- `opencv-python`（`cv2`）——import 快，但 wheel 60MB。
+
+测试一个都用不上。真正测的东西是：
+
+- JSON schema 校验（`schema.py`）
+- 动作分段器（纯 Python 时序逻辑）
+- Label Studio JSON 转换（纯 Python 字典处理）
+- Layout / 路径计算
+- 质检
+- 采样逻辑
+
+**没有一项**碰张量。但只要它们 import 的模块在顶层碰了 `mediapipe`，整个测试套件就得装 MediaPipe wheel **而且**下模型权重。CI 时间就这么没了。
+
+## Pattern 本身
+
+每一个推理相关的 import **写在用它的函数体内**。绝不放模块顶层。
+
+```python
+# pipeline.py
+
+from .layout import EpisodeLayout
+from .schema import EpisodePredictions
+# 没有顶层的 mediapipe / ultralytics / cv2
+
+def run_handmark_episode(ego_video: Path, layout: EpisodeLayout) -> None:
+    import mediapipe as mp  # 懒导入
+    import cv2
+
+    # ... 实际推理 ...
+```
+
+就这些。模块不带重依赖也能 import；重依赖只在函数真正被调时才加载。
+
+## 什么留在顶层
+
+懒导入规则**只**针对推理库。其他全部留在顶层，类型检查器和编辑器都能解析：
+
+- 标准库：留
+- `numpy`、`pydantic`、dataclass：留
+- 项目内部 import：留
+- `mediapipe`、`ultralytics`、`cv2`：**不留**
+
+## 这套换来什么
+
+三件事：
+
+1. **`pytest` 不用模型权重就能跑。** `uv sync --extra dev` 装好测试依赖；测试一秒之内跑完，全程不碰 `mediapipe` / `ultralytics`。CI 不用下 ~300MB 的 `.task` 和 `.pt`。
+2. **CLI 冷启动更快。** 顶层包 import 毫秒级，即使本地装了 mediapipe。CLI 的 `--help` 和 dry-run 路径不付推理库的 import 成本。
+3. **测试本身就是「函数边界干净」的文档。** 如果你不小心让一个纯函数耦合上 mediapipe，测试会响亮地挂掉。
+
+## 代价
+
+一件小事：懒导入的「跳转到引用」体验稍差。IDE 的「find references」对 `mp.solutions.hands` 的搜索结果要它能索引到函数体内才看得到（多数 IDE 都行）。
+
+也没法 `from mediapipe import ...` 懒导入（除非每次调用重新绑名），所以你接受 `import mediapipe as mp` 加调用点的 `mp.solutions.hands.Hands(...)`。审美问题。
+
+## 应该写下来的那条规则
+
+值得花十分钟加的 pre-commit / CI 自检：
+
+```python
+# tests/conftest.py
+import sys
+assert "mediapipe" not in sys.modules
+assert "ultralytics" not in sys.modules
+assert "cv2" not in sys.modules
+```
+
+放在 `conftest.py` 顶上。一旦有人把重依赖搬到模块顶层，整个测试套件会响亮地报「mediapipe 漏进测试环境了」。便宜的保险。
+
+## 总结
+
+- `mediapipe` / `ultralytics` / `cv2` 放顶层 import，测试就要 GPU 级依赖 + 模型权重。
+- 懒导入（函数体内）让模块的可导入性跟推理依赖解耦。
+- 代价：IDE 索引稍微费劲。收益：1 秒内的测试套件、CI 不下模型、函数边界干净。
+- 把规则烤进 `conftest.py`，回归时响亮地挂。

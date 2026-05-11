@@ -67,6 +67,8 @@ Conflating these is how you end up either burning GPU on frames nobody will ever
   Cutting inference fps to 1 saves a lot of compute, but the action segmenter relies on per-frame hand motion. Empirically F1 drops from ~72% to noise. Reserve `--inference-fps` for "I just want to spot-check a clip", not the actual production run.
 </Callout>
 
+Deep dive: [Two fps knobs in a video pre-annotation pipeline →](/en/posts/two-fps-knobs/)
+
 ## One module owns every path on disk
 
 There are six places in the codebase that need to know where a thing lives on disk: each of the four atomic steps, `aggregate`, and the QC runner. The fastest way to make any of them disagree silently is to let each one assemble its own path strings.
@@ -78,6 +80,8 @@ So all paths — source videos, predictions JSON, review-frames directory, LS ta
 
 `aggregate` reconstructs the same `EpisodeLayout` from a different starting point than `process` did, and the only reason that works is they ask the same dataclass. The first mid-project refactor was collapsing four ad-hoc path helpers down to these two.
 
+Deep dive: [One module owns every path on disk →](/en/posts/one-module-owns-every-path/)
+
 ## Canonical filenames buy zero-config batching
 
 A naming convention like `NN_NNN_{ego,exo}.mp4` — e.g. `01_001_ego.mp4` — encodes enough metadata that batch mode needs no config:
@@ -88,6 +92,8 @@ A naming convention like `NN_NNN_{ego,exo}.mp4` — e.g. `01_001_ego.mp4` — en
 
 So the steady-state command is a single line pointed at a task directory. Already-processed episodes are skipped (`--force` to re-run). Per-episode failures are isolated, so one corrupt MP4 doesn't kill the batch. Both are cheap to add once you've got the layout abstraction.
 
+Deep dive: [Canonical filenames buy zero-config batching →](/en/posts/canonical-filenames-zero-config-batching/)
+
 ## Don't use Label Studio Source Storage
 
 LS has a "Cloud Storage → Add Source Storage" feature that looks like exactly what you want when your data is local. It is not.
@@ -95,6 +101,8 @@ LS has a "Cloud Storage → Add Source Storage" feature that looks like exactly 
 LS auto-creates a task for every file under the storage root. Combined with the imported tasks (the JSON you actually want), that fans out into tens of thousands of phantom tasks that conflict with the real ones.
 
 Use `LOCAL_FILES_SERVING_ENABLED=true` plus `LOCAL_FILES_DOCUMENT_ROOT=$(pwd)/data` instead, and reference files in task JSON as `/data/local-files/?d=<rel>`. No Source Storage. No phantoms.
+
+Deep dive: [Don't use Label Studio Source Storage for local files →](/en/posts/dont-use-label-studio-source-storage/)
 
 ## Sampling: four signals, not one fps knob
 
@@ -108,6 +116,8 @@ Default review-frame sampling for Project B (hand + object on ego) uses four sig
 For a ~2-minute clip that lands at 30–50 frames per Project-B task. Project C (body pose on exo) is plain uniform 12 frames. Both are overridable by `--review-hand-fps` / `--review-pose-fps` / `--review-fps` (per-project flag wins).
 
 The point isn't that the strategy is optimal — it's that it gives humans frames that are *worth looking at* instead of 60 near-identical mid-action frames where the model was already confident.
+
+Deep dive: [Four signals for review-frame sampling →](/en/posts/four-signal-frame-sampling/)
 
 ## Tests stay pure-Python
 
@@ -123,6 +133,8 @@ def run_handmark_episode(...):
 ```
 
 That keeps the test suite runnable with no model downloads, finishing in under a second. Boring, but it's what makes CI cheap and what lets me run the whole thing during a flight.
+
+Deep dive: [Keep tests pure-Python with lazy imports →](/en/posts/lazy-imports-pure-python-tests/)
 
 ## What I'd build next
 

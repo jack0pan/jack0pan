@@ -1,0 +1,97 @@
+---
+title: Canonical filenames buy zero-config batching
+description: A short naming convention like `NN_NNN_ego.mp4` encodes enough metadata to run the entire batch with one CLI flag. Why this is cheap to add, and what it forces you to *not* build.
+pubDate: 2026-05-11
+tags: [data pipeline, cli]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+Deep dive on a small, high-leverage decision from the [Phase-1 overview](/en/posts/video-pre-annotation-pipeline/) — the naming convention that lets batch mode take a single argument.
+
+## The convention
+
+Source videos are named `NN_NNN_{ego,exo}.mp4`, where `NN` is the task ID and `NNN` is the episode index. Example: `01_001_ego.mp4`, `01_001_exo.mp4`, `02_017_ego.mp4`.
+
+They live under:
+
+```
+data/videos/ego/<task_subdir>/NN_NNN_ego.mp4
+data/videos/exo/<task_subdir>/NN_NNN_exo.mp4
+```
+
+That's it. No JSON sidecar, no manifest file, no database.
+
+## What the filename encodes
+
+Three things, all derivable with a regex:
+
+- **`task_subdir`** — taken from the path: `videos/ego/<task_subdir>/...`. Names the batch.
+- **`task_id`** — the leading `NN`. Used to look up the action-label template (different tasks have different action vocabularies).
+- **`episode_key`** — the `NN_NNN` prefix, common to ego and exo files.
+
+ego ↔ exo pairing is a string replace: `NN_NNN_ego.mp4` → `NN_NNN_exo.mp4`. No matching logic needed.
+
+## What the convention buys
+
+The steady-state command for an entire task batch:
+
+```bash
+uv run pipeline process --task task_01
+```
+
+Under the hood that's:
+
+1. Glob `data/videos/ego/task_01/*.mp4` for ego inputs.
+2. For each ego file: parse `episode_key`, derive exo path by string replace, derive `task_id` from `NN`, look up the action template.
+3. Run the four atomic steps. Skip episodes whose output JSONs already exist.
+4. Per-episode failures are caught and logged; the batch continues.
+5. Aggregate at the end.
+
+No config file. No manifest. The filesystem layout *is* the manifest.
+
+## What it forces you to *not* build
+
+This is the actually interesting part. Naming conventions are negative space — they tell you what you *don't* need:
+
+- **No "tasks.yaml" manifest** listing every episode. The glob is the manifest.
+- **No pairing table** between ego and exo. The filename pair is the pairing.
+- **No CLI flag** for "what action template to use". The `NN` prefix selects it.
+- **No tracking of "which episodes have been processed"**. Existence of the output JSON is the marker.
+
+Every one of those would have been a real piece of code. The convention costs nothing and prevents all of them.
+
+<Callout type="note">
+  This trick scales as long as filenames stay disciplined. The moment someone uploads `final_take_v3_REALLY_FINAL.mp4` to the same directory, the regex fails and the batch refuses that one episode. Loud failures are a feature here.
+</Callout>
+
+## Per-episode failure isolation, almost for free
+
+Once the loop is "glob → derive → process", isolating failures is a five-line `try/except` per episode:
+
+```python
+for ego in sorted(glob_videos(task_subdir)):
+    try:
+        process_one(ego)
+    except Exception as e:
+        log.error("episode %s failed: %s", ego.name, e)
+        failed.append(ego.name)
+```
+
+The batch logs a summary at the end. Resume = rerun the same command; processed episodes are skipped because their JSON exists. `--force` re-runs everything.
+
+This combination — convention-based batching + skip-if-done + per-episode isolation — is what makes the difference between a script you run once and a pipeline you actually use.
+
+## Where the convention breaks down
+
+Two scenarios:
+
+- **Ad-hoc / demo videos** that don't fit the convention. The CLI keeps an explicit-path mode (`--ego PATH --exo PATH --template "..."`) for these. Used in tests and one-off debugging; not in production batches.
+- **Cross-task pairing.** If episode 17 in `task_01` is actually the same scene as episode 03 in `task_02`, the filename can't express that. If you need that, you've outgrown the convention and need a manifest. We don't, so we don't.
+
+## Recap
+
+- `NN_NNN_{ego,exo}.mp4` + a directory convention encodes everything batch mode needs.
+- The steady state is one CLI command with one argument.
+- The convention buys you the absence of manifests, pairing tables, processing-state files, and template flags.
+- Failure isolation + skip-if-done make it actually usable, not just clever.

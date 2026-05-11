@@ -1,0 +1,82 @@
+---
+title: One module owns every path on disk
+description: Why a video pre-annotation pipeline ends up with one `layout` module that knows where everything lives, and what breaks when six different parts of the codebase each compute paths their own way.
+pubDate: 2026-05-11
+tags: [data pipeline, python, architecture]
+---
+
+import Callout from '../../../components/Callout.astro';
+
+Deep dive on the refactor I'd skip last if I were rebuilding the pipeline — the path module. The [Phase-1 overview](/en/posts/video-pre-annotation-pipeline/) mentions it; this post is why it earned its own slot.
+
+## Six places that need to know where things are
+
+In a video pre-annotation pipeline there are at least six places that need to compute paths:
+
+1. `handmark` — ego inference, writes `pre_annotations/<task>/<ep>_ego_predictions.json`
+2. `posemark` — exo inference, writes `pre_annotations/<task>/<ep>_exo_pose.json`
+3. `segment` — reads predictions, writes `<ep>_actions.json`
+4. `export-ls` — reads all three, writes review frames + LS task JSONs + QC
+5. `aggregate` — globs per-episode LS JSONs, writes the per-project import files
+6. The QC runner — reads predictions, writes `quality/<ep>_qc.json`
+
+Each of these takes a different starting point (a video path, a predictions JSON, a task directory) and has to derive the rest. Let any one of them assemble paths its own way and the bug is silent: outputs land in subtly different directories, the aggregate step finds nothing, and you spend an afternoon diffing `ls` output to figure out which step disagreed with which.
+
+## The two dataclasses
+
+The fix is two small dataclasses in a `layout` module:
+
+- `TaskLayout` — knows a task directory: where the source videos live, where predictions go, where the per-project aggregated JSONs land.
+- `EpisodeLayout` — knows a single episode within a task: ego/exo video paths, predictions filenames, review-frame directory, LS task JSON per project, QC JSON, and the `/data/local-files/?d=<rel>` URL Label Studio uses.
+
+Every other module imports one of these and calls methods like `layout.predictions_json()` or `layout.review_frames_dir(view='ego')`. Nobody else builds a path string.
+
+```python
+@dataclass(frozen=True)
+class EpisodeLayout:
+    data_root: Path
+    task_subdir: str
+    episode_key: str
+
+    @property
+    def predictions_json(self) -> Path:
+        return self.data_root / "pre_annotations" / self.task_subdir / f"{self.episode_key}_ego_predictions.json"
+
+    def ls_task_json(self, project: Literal["a", "b", "c"]) -> Path:
+        return self.data_root / "label_studio" / self.task_subdir / "episodes" / f"{self.episode_key}_project_{project}.json"
+
+    def ls_url(self, rel: str) -> str:
+        return f"/data/local-files/?d={rel}"
+```
+
+(Abbreviated. The real one has ~15 path methods.)
+
+## The two reconstruction paths
+
+The subtle part: `aggregate` reconstructs the same `EpisodeLayout` from a *different starting point* than `process` did. `process` had a video path; `aggregate` has a glob of per-episode LS JSONs. Both end up needing the same paths for the same episode.
+
+This works because both code paths call `EpisodeLayout.from_video(...)` and `EpisodeLayout.from_ls_task_json(...)` respectively, and both constructors compute the same `(data_root, task_subdir, episode_key)`. If those constructors are the single source of truth, the layouts converge. If anyone bypasses them, the layouts drift and `aggregate` silently aggregates the wrong thing.
+
+This is what "single source of truth" actually means here: there's *one* function that turns a video path into an `EpisodeLayout`, and *one* function that turns an LS task JSON path back into the same `EpisodeLayout`. Tested against each other.
+
+## The refactor I always do mid-project
+
+I've never started a pipeline with the layout module. It always starts as four ad-hoc helper functions (`predictions_path_for(...)`, `review_dir_for(...)`, etc.) scattered across the four atomic steps. By the time I'm wiring up `aggregate`, those four helpers have drifted apart on case-sensitivity, separator choice, or where exactly `episode_key` gets parsed from.
+
+Collapsing them into `TaskLayout` + `EpisodeLayout` is the first mid-project refactor every time. It's worth doing on day one if you trust me on this.
+
+## What I'd version
+
+The path layout itself is a kind of schema. When you change it — say, you split `pre_annotations/` into `predictions/` and `actions/` — every existing on-disk dataset is suddenly at the wrong path. Two patterns help:
+
+- A schema version constant in the layout module. Bumping it forces explicit migration.
+- A `migrate_v1_to_v2(data_root)` function next to the dataclass. Moves files into the new layout, idempotently.
+
+This is overkill for the first dataset. By the third, you'll want it.
+
+## Recap
+
+- Six places in the pipeline need paths; let any one of them go ad-hoc and you'll silently aggregate the wrong thing.
+- Two dataclasses (`TaskLayout`, `EpisodeLayout`) own every path on disk and the LS URL too.
+- `process` and `aggregate` re-derive the same layout from different starting points. Tested-against-each-other constructors are what makes that safe.
+- The refactor is cheap on day one and painful on day forty. Do it on day one.
