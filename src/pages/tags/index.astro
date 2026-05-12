@@ -3,7 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getPostsByLang } from '../../i18n/posts';
 import { t } from '../../i18n/ui';
 
-const lang = 'zh';
+const lang = 'en';
 const posts = await getPostsByLang(lang);
 const tagCount = new Map<string, number>();
 posts.forEach(p => p.data.tags.forEach(tag => tagCount.set(tag, (tagCount.get(tag) || 0) + 1)));

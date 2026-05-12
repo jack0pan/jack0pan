@@ -64,7 +64,7 @@ export const ui = {
 export type UIKey = keyof typeof ui['zh'];
 
 export function t(lang: Lang, key: UIKey, vars?: Record<string, string | number>): string {
-  let s: string = ui[lang][key] ?? ui.zh[key];
+  let s: string = ui[lang][key] ?? ui.en[key];
   if (vars) {
     for (const [k, v] of Object.entries(vars)) {
       s = s.replace('{' + k + '}', String(v));

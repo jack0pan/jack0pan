@@ -5,7 +5,7 @@ import { getPostsByLang } from '../i18n/posts';
 import { t } from '../i18n/ui';
 import { SOCIAL } from '../consts';
 
-const lang = 'zh';
+const lang = 'en';
 const posts = (await getPostsByLang(lang)).slice(0, 5);
 
 const topics = [
@@ -25,8 +25,8 @@ const githubHandle = SOCIAL.github.replace('https://github.com/', '');
   <section class="font-mono text-sm leading-relaxed mb-10">
     <p class="text-[var(--accent)]">$ whoami</p>
     <div class="mt-3 pl-4 border-l border-[var(--border)] text-[var(--fg)]">
-      潘杰（Jack Pan）· 数据平台工程师。业余时间折腾计算机视觉数据流水线。
-      这里记录「真的跑过」的东西，一周一篇的节奏。
+      Jack Pan · data platform engineer. On the side I tinker with computer vision data pipelines.
+      Notes here are about things I've actually shipped, roughly one post a week.
     </div>
   </section>
 

@@ -30,5 +30,5 @@ export async function findTranslation(post: Post): Promise<Post | null> {
 export function postUrl(post: Post): string {
   const lang = postLang(post);
   const slug = shortSlug(post);
-  return lang === 'zh' ? '/posts/' + slug + '/' : '/en/posts/' + slug + '/';
+  return lang === 'en' ? '/posts/' + slug + '/' : '/zh/posts/' + slug + '/';
 }

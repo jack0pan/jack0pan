@@ -9,5 +9,5 @@ export const SOCIAL = {
 };
 
 export type Lang = 'zh' | 'en';
-export const LANGS: Lang[] = ['zh', 'en'];
-export const DEFAULT_LANG: Lang = 'zh';
+export const LANGS: Lang[] = ['en', 'zh'];
+export const DEFAULT_LANG: Lang = 'en';

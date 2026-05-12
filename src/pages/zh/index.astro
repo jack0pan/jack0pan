@@ -5,7 +5,7 @@ import { getPostsByLang } from '../../i18n/posts';
 import { t } from '../../i18n/ui';
 import { SOCIAL } from '../../consts';
 
-const lang = 'en';
+const lang = 'zh';
 const posts = (await getPostsByLang(lang)).slice(0, 5);
 
 const topics = [
@@ -25,8 +25,8 @@ const githubHandle = SOCIAL.github.replace('https://github.com/', '');
   <section class="font-mono text-sm leading-relaxed mb-10">
     <p class="text-[var(--accent)]">$ whoami</p>
     <div class="mt-3 pl-4 border-l border-[var(--border)] text-[var(--fg)]">
-      Jack Pan · data platform engineer. On the side I tinker with computer vision data pipelines.
-      Notes here are about things I've actually shipped, roughly one post a week.
+      潘杰（Jack Pan）· 数据平台工程师。业余时间折腾计算机视觉数据流水线。
+      这里记录「真的跑过」的东西，一周一篇的节奏。
     </div>
   </section>
 
@@ -45,7 +45,7 @@ const githubHandle = SOCIAL.github.replace('https://github.com/', '');
   </section>
 
   <div class="mb-10 font-mono text-sm">
-    <a href="/en/posts/" class="text-[var(--accent)] hover:underline">
+    <a href="/zh/posts/" class="text-[var(--accent)] hover:underline">
       {t(lang, 'home.viewAll')}
     </a>
   </div>
@@ -58,7 +58,7 @@ const githubHandle = SOCIAL.github.replace('https://github.com/', '');
       <dt>email</dt>
       <dd><a class="hover:text-[var(--accent)] hover:underline" href={`mailto:${SOCIAL.email}`}>{SOCIAL.email}</a></dd>
       <dt>rss</dt>
-      <dd><a class="hover:text-[var(--accent)] hover:underline" href="/en/rss.xml">/en/rss.xml</a></dd>
+      <dd><a class="hover:text-[var(--accent)] hover:underline" href="/zh/rss.xml">/zh/rss.xml</a></dd>
     </dl>
   </section>
 </BaseLayout>

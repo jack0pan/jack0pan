@@ -26,7 +26,7 @@ const fmt = (d: Date) => d.toLocaleDateString(locale, {
   month: lang === 'zh' ? 'long' : 'short',
   day: 'numeric',
 });
-const tagsBase = lang === 'zh' ? '/tags' : '/en/tags';
+const tagsBase = lang === 'en' ? '/tags' : '/zh/tags';
 ---
 
 <BaseLayout lang={lang} title={title} description={description}>

@@ -4,7 +4,7 @@ import PostCard from '../../components/PostCard.astro';
 import { getPostsByLang } from '../../i18n/posts';
 import { t } from '../../i18n/ui';
 
-const lang = 'zh';
+const lang = 'en';
 const posts = await getPostsByLang(lang);
 
 const byYear = posts.reduce((acc, post) => {
