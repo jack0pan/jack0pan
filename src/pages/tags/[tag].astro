@@ -5,7 +5,7 @@ import { getPostsByLang } from '../../i18n/posts';
 import { t } from '../../i18n/ui';
 
 export async function getStaticPaths() {
-  const posts = await getPostsByLang('zh');
+  const posts = await getPostsByLang('en');
   const tags = [...new Set(posts.flatMap(p => p.data.tags))];
   return tags.map(tag => ({
     params: { tag },
@@ -17,7 +17,7 @@ export async function getStaticPaths() {
 }
 
 const { tag, posts } = Astro.props;
-const lang = 'zh';
+const lang = 'en';
 ---
 
 <BaseLayout lang={lang} title={`#${tag}`}>

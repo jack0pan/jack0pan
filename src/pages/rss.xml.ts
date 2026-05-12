@@ -4,7 +4,7 @@ import { getPostsByLang, postUrl } from '../i18n/posts';
 import { t } from '../i18n/ui';
 
 export async function GET(context: APIContext) {
-  const lang = 'zh';
+  const lang = 'en';
   const posts = await getPostsByLang(lang);
   return rss({
     title: t(lang, 'site.title'),

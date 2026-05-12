@@ -7,8 +7,8 @@ import rehypeMermaid from 'rehype-mermaid';
 export default defineConfig({
   site: 'https://jackpan.me',
   i18n: {
-    defaultLocale: 'zh',
-    locales: ['zh', 'en'],
+    defaultLocale: 'en',
+    locales: ['en', 'zh'],
     routing: {
       prefixDefaultLocale: false,
       redirectToDefaultLocale: false,
@@ -18,8 +18,8 @@ export default defineConfig({
     mdx(),
     sitemap({
       i18n: {
-        defaultLocale: 'zh',
-        locales: { zh: 'zh-CN', en: 'en-US' },
+        defaultLocale: 'en',
+        locales: { en: 'en-US', zh: 'zh-CN' },
       },
     }),
     tailwind({ applyBaseStyles: false }),

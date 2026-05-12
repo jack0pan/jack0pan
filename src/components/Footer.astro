@@ -5,7 +5,7 @@ import { t } from '../i18n/ui';
 
 interface Props { lang: Lang; }
 const { lang } = Astro.props;
-const rssHref = lang === 'zh' ? '/rss.xml' : '/en/rss.xml';
+const rssHref = lang === 'en' ? '/rss.xml' : '/zh/rss.xml';
 ---
 
 <footer class="border-t border-[var(--border)] mt-16">
